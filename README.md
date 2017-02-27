@@ -1,2 +1,2 @@
 # colisee-template
-A template for colisee microservices to base themselves off
+A template for colisee microservices to base themselves off!
