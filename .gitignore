@@ -1,0 +1,11 @@
+# Editors & Environment
+.idea/
+.vscode/
+.vagrant/
+.env
+
+# NPM
+node_modules/
+npm-debug.log
+
+ubuntu-*-cloudimg-console.log
