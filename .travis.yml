@@ -8,7 +8,7 @@ before_script:
 # - docker run --name db --publish 5433:5432 --detach siggame/colisee-db
 
 script:
-# - docker run -e POSTGRES_PORT=5433 --network host template npm run test
+  - docker run --network host template npm run test
 
-after_script:
+#after_script:
 #  - docker stop db
