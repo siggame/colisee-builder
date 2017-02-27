@@ -11,7 +11,6 @@ export default function (): void {
           .then(resolve)
           .catch(err => chai.expect(err).to.not.exist)
       })/**/
-    })
   })
   templateTest()
 }

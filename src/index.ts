@@ -8,5 +8,5 @@ import * as vars from "./vars";
 const app = express();
 
 app.get('/api/example', function(req, res) {
-    res.send({"hello", "world"});
+    res.send("Hello world!");
 });
