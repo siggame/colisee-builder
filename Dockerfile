@@ -1,7 +1,7 @@
 FROM node:latest
 
-ADD . template
-WORKDIR template
+ADD . workspace
+WORKDIR workspace
 
 RUN npm run setup
 RUN npm run build

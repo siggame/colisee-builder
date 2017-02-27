@@ -25,14 +25,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/russleyshaw/colisee-template.git"
+    "url": "git+https://github.com/siggame/colisee-template.git"
   },
   "author": "siggame",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/russleyshaw/colisee-template/issues"
+    "url": "https://github.com/siggame/colisee-template/issues"
   },
-  "homepage": "https://github.com/russleyshaw/colisee-template#readme",
+  "homepage": "https://github.com/siggame/colisee-template#readme",
   "devDependencies": {
     "@types/chai": "^3.4.34",
     "@types/dotenv": "^2.0.20",

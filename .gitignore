@@ -8,4 +8,4 @@
 node_modules/
 npm-debug.log
 
-ubuntu-*-cloudimg-console.log
+*.log
