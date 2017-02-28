@@ -1,14 +1,13 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-#If running on windows, we recommend running gitbash in administrator
+# If running on Windows, we recommend running Git Bash as Administrator
 
 Vagrant.configure("2") do |config|
 
   config.vm.box = "ubuntu/xenial64"
 
-# Prot forward config:
-#  config.vm.network "forwarded_port", guest: 3001, host: 3000
+  config.vm.network "forwarded_port", guest: 3000, host: 3000
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder ".", "/home/ubuntu/workspace"

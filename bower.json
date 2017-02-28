@@ -1,0 +1,15 @@
+{
+  "name": "colisee-template",
+  "description": "Template package for colisee sub-modules",
+  "main": "src/index.js",
+  "authors": [
+    "siggame"
+  ],
+  "license": "MIT",
+  "homepage": "https://siggame.io/colisee-template",
+  "dependencies": {
+    "pure": "^0.6.2",
+    "jquery": "^3.1.1",
+    "react": "^15.4.2"
+  }
+}
