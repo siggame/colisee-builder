@@ -7,7 +7,9 @@
     "quick-start": "node src/index.js",
     "prestart": "npm run build",
     "start": "npm run quick-start",
-    "build": "tsc",
+    "build": "npm run build:src && npm run build:client",
+    "build:src": "tsc --project tsconfig-src.json",
+    "build:client": "tsc --project tsconfig-client.json && browserify client/index.js -o client/bundle.js",
     "presetup": "npm install",
     "setup": "bower install",
     "predocs": "npm run build",
@@ -46,6 +48,7 @@
     "@types/node": "^7.0.5",
     "apidoc": "^0.17.5",
     "bower": "^1.8.0",
+    "browserify": "^14.1.0",
     "chai": "^3.5.0",
     "mocha": "^3.2.0",
     "typedoc": "^0.5.7"
@@ -57,6 +60,8 @@
     "dotenv": "^4.0.0",
     "express": "^4.14.1",
     "lodash": "^4.17.4",
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2",
     "typescript": "^2.1.5"
   }
 }
