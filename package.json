@@ -9,7 +9,7 @@
     "start": "npm run quick-start",
     "build": "npm run build:src && npm run build:client",
     "build:src": "tsc --project tsconfig-src.json",
-    "build:client": "tsc --project tsconfig-client.json && browserify client/index.js -o client/bundle.js",
+    "build:client": "tsc --project tsconfig-client.json && browserify client/index.js > client/bundle.js && uglifyjs client/bundle.js > client/bundle.min.js",
     "presetup": "npm install",
     "setup": "bower install",
     "predocs": "npm run build",
