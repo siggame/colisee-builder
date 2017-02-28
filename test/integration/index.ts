@@ -1,6 +1,4 @@
 import * as chai from "chai"
-import templateTest from "./template"
-
 
 export default function (): void {
   describe("Integration Tests", function () {
@@ -11,6 +9,5 @@ export default function (): void {
           .then(resolve)
           .catch(err => chai.expect(err).to.not.exist)
       })/**/
-  })
-  templateTest()
+  });
 }
