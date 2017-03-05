@@ -11,7 +11,7 @@
     "build:src": "tsc --project tsconfig-src.json",
     "build:client": "tsc --project tsconfig-client.json && browserify client/index.js > client/bundle.js && uglifyjs client/bundle.js > client/bundle.min.js",
     "presetup": "npm install",
-    "setup": "bower install",
+    "setup": "bower --allow-root install",
     "predocs": "npm run build",
     "docs": "npm run quick-docs",
     "quick-docs": "npm run quick-docs:ts && npm run quick-docs:api && npm run quick-docs:readme",
