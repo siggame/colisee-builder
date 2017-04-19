@@ -1,42 +1,43 @@
 {
-  "name": "colisee-template",
+  "name": "colisee-builder",
   "version": "0.0.1",
-  "description": "template package for colisee sub-modules",
-  "main": "src/index.js",
+  "description": "Service to build AI clients into Docker images.",
+  "main": "src/app.js",
   "scripts": {
-    "quick-start": "node src/index.js",
+    "quick-start": "node src/app.js",
     "prestart": "npm run build",
     "start": "npm run quick-start",
-    "build": "npm run build:src && npm run build:client",
+    "start-prod": "NODE_ENV=production node src/app.js",
+    
+    "build": "npm run build:src",
     "build:src": "tsc --project tsconfig-src.json",
-    "build:client": "tsc --project tsconfig-client.json && browserify client/index.js > client/bundle.js && uglifyjs client/bundle.js > client/bundle.min.js",
-    "presetup": "npm install",
-    "setup": "bower --allow-root install",
+    "setup": "npm install",
     "predocs": "npm run build",
     "docs": "npm run quick-docs",
     "quick-docs": "npm run quick-docs:ts && npm run quick-docs:api && npm run quick-docs:readme",
     "quick-docs:api": "apidoc --input src/ --output docs/api/",
     "quick-docs:ts": "typedoc --out docs/ts/",
     "quick-docs:readme": "cp README.md docs/",
+    
     "quick-test": "mocha --colors test/",
     "pretest": "npm run build",
     "test": "npm run quick-test",
-    "clean": "npm run clean:src && npm run clean:test && npm run clean:npm && npm run clean:bower",
+    
+    "clean": "npm run clean:src && npm run clean:test && npm run clean:npm",
     "clean:src": "find src -name *.js -name *.js.map -exec rm {} +",
     "clean:test": "find test -name *.js -name *.js.map -exec rm {} +",
     "clean:npm": "rm -rf node_modules/ npm-debug.log",
-    "clean:bower": "rm -rf bower_components/"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/siggame/colisee-template.git"
+    "url": "git+https://github.com/siggame/colisee-builder.git"
   },
   "author": "siggame",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/siggame/colisee-template/issues"
+    "url": "https://github.com/siggame/colisee-builder/issues"
   },
-  "homepage": "https://siggame.io/colisee-template",
+  "homepage": "https://siggame.io/colisee-builder",
   "devDependencies": {
     "@types/body-parser": "0.0.34",
     "@types/chai": "^3.4.34",
@@ -47,8 +48,6 @@
     "@types/mocha": "^2.2.39",
     "@types/node": "^7.0.5",
     "apidoc": "^0.17.5",
-    "bower": "^1.8.0",
-    "browserify": "^14.1.0",
     "chai": "^3.5.0",
     "mocha": "^3.2.0",
     "typedoc": "^0.5.7"
@@ -60,8 +59,6 @@
     "dotenv": "^4.0.0",
     "express": "^4.14.1",
     "lodash": "^4.17.4",
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2",
     "typescript": "^2.1.5"
   }
 }
