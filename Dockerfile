@@ -6,4 +6,4 @@ WORKDIR workspace
 RUN npm run setup
 RUN npm run build
 
-CMD ["npm", "run", "quick-start"]
+CMD ["npm", "run", "start-prod"]
