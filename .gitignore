@@ -4,9 +4,18 @@
 .vagrant/
 .env
 
+# Compiled & Generated
+src/*.js
+src/**/*.js
+test/*.js
+test/**/*.js
+docs/
+
 # NPM
 node_modules/
 bower_components/
 npm-debug.log
 
 *.log
+
+tmp/

@@ -5,13 +5,14 @@
   "main": "src/app.js",
   "scripts": {
     "quick-start": "node src/app.js",
+    "start-prod": "NODE_ENV=production node src/app.js",
     "prestart": "npm run build",
     "start": "npm run quick-start",
-    "start-prod": "NODE_ENV=production node src/app.js",
     
-    "build": "npm run build:src",
-    "build:src": "tsc --project tsconfig-src.json",
+    "build": "tsc",
     "setup": "npm install",
+    "setup-prod": "npm install --production",
+    
     "predocs": "npm run build",
     "docs": "npm run quick-docs",
     "quick-docs": "npm run quick-docs:ts && npm run quick-docs:api && npm run quick-docs:readme",
@@ -26,7 +27,7 @@
     "clean": "npm run clean:src && npm run clean:test && npm run clean:npm",
     "clean:src": "find src -name *.js -name *.js.map -exec rm {} +",
     "clean:test": "find test -name *.js -name *.js.map -exec rm {} +",
-    "clean:npm": "rm -rf node_modules/ npm-debug.log",
+    "clean:npm": "rm -rf node_modules/ npm-debug.log"
   },
   "repository": {
     "type": "git",
