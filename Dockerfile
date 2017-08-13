@@ -1,7 +1,7 @@
 FROM node:alpine
 
-ADD . prj
-WORKDIR prj
+ADD . app
+WORKDIR app
 
 RUN npm run setup
 RUN npm run build

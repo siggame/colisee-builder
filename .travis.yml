@@ -4,19 +4,7 @@ services:
   - docker
 
 before_script:
-  - docker build -t development -f Dockerfile.dev .
+  - docker build -t colisee-builder -f Dockerfile .
 
 script:
-  - docker run --rm development npm run test
-  
-before_deploy:
-  - docker run --rm -v ${TRAVIS_BUILD_DIR}/docs:/prj/docs development doxygen
-  - sudo chown -R ${USER}:${USER} docs/
-  
-deploy:
-  provider: pages
-  skip_cleanup: true
-  github_token: $GITHUB_TOKEN
-  local_dir: docs
-  on:
-    branch: stable
+  - docker run --rm colisee-builder npm run test
