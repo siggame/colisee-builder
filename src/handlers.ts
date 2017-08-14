@@ -1,0 +1,63 @@
+import * as _ from "lodash";
+import { Request, Response, NextFunction } from "express";
+import * as httpErrors from "http-errors";
+
+import * as lib from "./builder";
+
+export function getBuildStatuses(req: Request, res: Response, next: NextFunction): void {
+    Promise.resolve()
+        .then(buildOptions)
+        .then(lib.getBuildStatuses)
+        .catch(next);
+
+    function buildOptions(): lib.GetBuildStatusesOptions {
+        return {
+            ids: req.query.id
+        }
+    }
+}
+
+export function getBuildStatus(req: Request, res: Response, next: NextFunction): void {
+    Promise.resolve()
+        .then(() => assertIdPathParam(req))
+        .catch(next);
+}
+
+export function getBuildLog(req: Request, res: Response, next: NextFunction): void {
+    Promise.resolve()
+        .then(() => assertIdPathParam(req))
+        .catch(next);
+}
+
+export function getBuildImage(req: Request, res: Response, next: NextFunction): void {
+    Promise.resolve()
+        .then(() => assertIdPathParam(req))
+        .catch(next);
+}
+
+export function enqueueBuild(req: Request, res: Response, next: NextFunction): void {
+    Promise.resolve()
+        .then(() => assertIdPathParam(req))
+        .catch(next);
+}
+
+/**
+ * Assert that if the request contains the `id` path parameter, it is a string. Throw 400 otherwise.
+ * @param req 
+ */
+function assertIdPathParam(req: Request) {
+    if(_.isNil(req.params.id)) {
+        throw httpErrors(400, "Must be given an ID")
+    }
+    if(!_.isString(req.params.id)) {
+        throw httpErrors(400, "ID must be a string");
+    }
+}
+
+/**
+ * Assert that if the request contains the `id` query parameter and is an array of strings. Throw 400 otherwise.
+ * @param req 
+ */
+function assertIdsQueryParam(req: Request) {
+
+}
