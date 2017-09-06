@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import * as httpErrors from "http-errors";
+import { BadRequest, NotFound } from "http-errors";
 import * as _ from "lodash";
 import * as winston from "winston";
 
@@ -50,10 +50,10 @@ export async function enqueueBuild(req: Request, res: Response, next: NextFuncti
  */
 function assertIdPathParam(req: Request) {
     if (_.isNil(req.params.id)) {
-        throw httpErrors(400, "Must be given an ID");
+        throw new NotFound("ID must be provided");
     }
     if (!_.isString(req.params.id)) {
-        throw httpErrors(400, "ID must be a string");
+        throw new BadRequest("ID must be a string");
     }
 }
 
