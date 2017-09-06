@@ -3,6 +3,7 @@
 .vscode/
 .vagrant/
 .env
+tslint.json
 
 # Compiled & Generated
 src/*.js
