@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-describe("Sanity", function(){
-    it('should be sane', async () =>{
+describe("Sanity", function () {
+    it('should be sane', async () => {
         expect(true).is.true;
         expect(false).is.false;
     })

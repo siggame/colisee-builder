@@ -1,6 +1,7 @@
-import * as _ from "lodash";
 import { Request, Response, NextFunction } from "express";
 import * as httpErrors from "http-errors";
+import * as _ from "lodash";
+import * as winston from "winston";
 
 import * as lib from "./builder";
 
@@ -35,10 +36,12 @@ export function getBuildImage(req: Request, res: Response, next: NextFunction): 
         .catch(next);
 }
 
-export function enqueueBuild(req: Request, res: Response, next: NextFunction): void {
-    Promise.resolve()
-        .then(() => assertIdPathParam(req))
-        .catch(next);
+export async function enqueueBuild(req: Request, res: Response, next: NextFunction): Promise<void> {
+    const { originalname } = await req.file;
+    winston.info(`Team ID: ${req.params.teamId}`);
+    winston.info(`File Name: ${originalname}`);
+    res.json({ originalname });
+    res.end();
 }
 
 /**
@@ -46,10 +49,10 @@ export function enqueueBuild(req: Request, res: Response, next: NextFunction): v
  * @param req 
  */
 function assertIdPathParam(req: Request) {
-    if(_.isNil(req.params.id)) {
+    if (_.isNil(req.params.id)) {
         throw httpErrors(400, "Must be given an ID")
     }
-    if(!_.isString(req.params.id)) {
+    if (!_.isString(req.params.id)) {
         throw httpErrors(400, "ID must be a string");
     }
 }

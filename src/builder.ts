@@ -12,6 +12,6 @@ export interface GetBuildStatusesOptions {
     ids?: string[];
 }
 
-export async function getBuildStatuses(options: GetBuildStatusesOptions): Promise<BuildStatus> {
-    
+export async function getBuildStatuses(options: GetBuildStatusesOptions): Promise<BuildStatus[]> {
+    return [];
 }
