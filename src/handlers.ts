@@ -1,21 +1,14 @@
 import { NextFunction, Request, Response } from "express";
+import * as fileType from "file-type";
 import { BadRequest, NotFound } from "http-errors";
 import * as _ from "lodash";
-import * as winston from "winston";
 
 import * as lib from "./builder";
+import { createReadableTarStream } from "./helpers";
 
 export function getBuildStatuses(req: Request, res: Response, next: NextFunction): void {
     Promise.resolve()
-        .then(buildOptions)
-        .then(lib.getBuildStatuses)
         .catch(next);
-
-    function buildOptions(): lib.GetBuildStatusesOptions {
-        return {
-            ids: req.query.id,
-        };
-    }
 }
 
 export function getBuildStatus(req: Request, res: Response, next: NextFunction): void {
@@ -37,11 +30,19 @@ export function getBuildImage(req: Request, res: Response, next: NextFunction): 
 }
 
 export async function enqueueBuild(req: Request, res: Response, next: NextFunction): Promise<void> {
-    const { originalname } = req.file;
-    winston.info(`Team ID: ${req.params.teamId}`);
-    winston.info(`File Name: ${originalname}`);
-    res.json({ originalname });
-    res.end();
+    assertFileType(req);
+    const context = await createReadableTarStream(req.file.buffer);
+    res.end("enqueued build");
+}
+
+function assertFileType(req: Request) {
+    if (_.isNil(req.file)) {
+        throw new BadRequest("File must be uploaded");
+    }
+    const { ext } = fileType(req.file.buffer);
+    if (ext !== "tar" && ext !== "zip" && ext !== "gz") {
+        throw new BadRequest(`${ext} is not a supported file type`);
+    }
 }
 
 /**

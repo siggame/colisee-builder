@@ -1,17 +1,22 @@
+export type BuildStatus = "queued" | "building" | "failed" | "succeeded";
 
-export type BuildStatusType = "queued" | "building" | "failed" | "succeeded";
-
-export interface BuildStatus {
+export interface BuildSubmission {
     id: string;
-    type: BuildStatusType;
+    status: BuildStatus;
+    context?: ReadableStream;
     startedTime: Date;
-    finishedTime: Date | null;
+    finishedTime?: Date;
 }
 
-export interface GetBuildStatusesOptions {
-    ids?: string[];
+export interface IBuilderOptions {
+    queueLimit: number;
 }
 
-export async function getBuildStatuses(options: GetBuildStatusesOptions): Promise<BuildStatus[]> {
-    return [];
+export class Builder {
+    private submissions: BuildSubmission[];
+    private queueLimit: number;
+
+    constructor({ queueLimit }: IBuilderOptions) {
+        this.queueLimit = queueLimit;
+    }
 }
