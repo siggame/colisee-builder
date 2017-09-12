@@ -45,6 +45,10 @@ app.use((err: httpErrors.HttpError, req: Request, res: Response, next: NextFunct
     res.status(err.status).send(err);
 });
 
-app.listen(vars.PORT, () => {
-    winston.info(`Listening on port ${vars.PORT}...`);
-});
+export default () => {
+    app.listen(vars.PORT, () => {
+        winston.info(`Listening on port ${vars.PORT}...`);
+    });
+};
+
+export { app };
