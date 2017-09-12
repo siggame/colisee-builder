@@ -1,9 +1,8 @@
 import * as admZip from "adm-zip";
 import * as fileType from "file-type";
-import * as _ from "lodash";
+import { noop } from "lodash";
 import { Readable } from "stream";
 import * as tar from "tar-stream";
-import * as winston from "winston";
 import * as zlib from "zlib";
 
 interface IPacker extends Readable {
@@ -12,7 +11,7 @@ interface IPacker extends Readable {
     finalize(): void;
 }
 
-export async function createReadableTarStream(buffer: Buffer): Promise<Readable> {
+export function createReadableTarStream(buffer: Buffer) {
     const { ext } = fileType(buffer);
     if (ext === "zip") {
         return zipToTarStream(buffer);
@@ -31,7 +30,7 @@ export async function createReadableTarStream(buffer: Buffer): Promise<Readable>
     }
 }
 
-async function zipToTarStream(buffer: Buffer): Promise<Readable> {
+function zipToTarStream(buffer: Buffer) {
     const zip = new admZip(buffer);
     const packer: IPacker = tar.pack();
     // NOTE: some meta data is lost during conversion and 
@@ -45,9 +44,13 @@ async function zipToTarStream(buffer: Buffer): Promise<Readable> {
 
 function makeReadableStream(cb?: (stream: Readable) => void) {
     const contextStream = new Readable();
-    contextStream._read = _.noop;
+    contextStream._read = noop;
     if (cb) {
         cb(contextStream);
     }
     return contextStream;
+}
+
+export function catchError<T>(fn: (...args: any[]) => Promise<T>) {
+    return async (...args: any[]) => fn(...args).catch(args[2]);
 }

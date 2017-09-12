@@ -1,42 +1,15 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
-import { BadRequest, NotFound } from "http-errors";
-import * as _ from "lodash";
+import { BadRequest } from "http-errors";
+import { isArrayLike, isNil, isString } from "lodash";
+import * as multer from "multer";
 
-import * as lib from "./builder";
-import { createReadableTarStream } from "./helpers";
+import { catchError, createReadableTarStream } from "./helpers";
 
-export function getBuildStatuses(req: Request, res: Response, next: NextFunction): void {
-    Promise.resolve()
-        .catch(next);
-}
-
-export function getBuildStatus(req: Request, res: Response, next: NextFunction): void {
-    Promise.resolve()
-        .then(() => assertIdPathParam(req))
-        .catch(next);
-}
-
-export function getBuildLog(req: Request, res: Response, next: NextFunction): void {
-    Promise.resolve()
-        .then(() => assertIdPathParam(req))
-        .catch(next);
-}
-
-export function getBuildImage(req: Request, res: Response, next: NextFunction): void {
-    Promise.resolve()
-        .then(() => assertIdPathParam(req))
-        .catch(next);
-}
-
-export async function enqueueBuild(req: Request, res: Response, next: NextFunction): Promise<void> {
-    assertFileType(req);
-    const context = await createReadableTarStream(req.file.buffer);
-    res.end("enqueued build");
-}
+const upload = multer();
 
 function assertFileType(req: Request) {
-    if (_.isNil(req.file)) {
+    if (isNil(req.file)) {
         throw new BadRequest("File must be uploaded");
     }
     const { ext } = fileType(req.file.buffer);
@@ -50,10 +23,9 @@ function assertFileType(req: Request) {
  * @param req 
  */
 function assertIdPathParam(req: Request) {
-    if (_.isNil(req.params.id)) {
-        throw new NotFound("ID must be provided");
-    }
-    if (!_.isString(req.params.id)) {
+    if (isNil(req.params.id)) {
+        throw new BadRequest("ID must be provided");
+    } else if (!isString(req.params.id)) {
         throw new BadRequest("ID must be a string");
     }
 }
@@ -63,5 +35,32 @@ function assertIdPathParam(req: Request) {
  * @param req 
  */
 function assertIdsQueryParam(req: Request) {
-
+    if (isNil(req.query.ids)) {
+        throw new BadRequest("IDs must be provided");
+    } else if (!isArrayLike(req.query.ids)) {
+        throw new BadRequest("IDs must be provided in an list");
+    }
 }
+
+export const getBuildStatuses: RequestHandler[] = [
+    catchError(async (req, res, next) => {
+        assertIdsQueryParam(req);
+        res.end();
+    }),
+];
+
+export const getBuildStatus: RequestHandler[] = [
+    catchError(async (req, res, next) => {
+        assertIdPathParam(req);
+        res.end();
+    }),
+];
+
+export const enqueueBuild: RequestHandler[] = [
+    upload.single("submission"),
+    catchError(async (req, res, next) => {
+        assertFileType(req);
+        await createReadableTarStream(req.file.buffer);
+        res.end("enqueued build");
+    }),
+];

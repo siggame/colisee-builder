@@ -18,5 +18,6 @@ export class Builder {
 
     constructor({ queueLimit }: IBuilderOptions) {
         this.queueLimit = queueLimit;
+        this.submissions = [];
     }
 }
