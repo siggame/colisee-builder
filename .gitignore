@@ -13,5 +13,6 @@ node_modules/
 
 *.log
 
+docs/
 release/
 tmp/

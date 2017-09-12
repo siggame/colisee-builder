@@ -1,10 +1,8 @@
-sudo: required
-
-services:
-  - docker
+language: node_js
+node_js:
+    - node
 
 before_script:
-  - docker build -t colisee-builder -f Dockerfile .
-
+    - npm install
 script:
-  - docker run --rm colisee-builder npm run test
+    - npm test
