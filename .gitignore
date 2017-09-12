@@ -6,17 +6,12 @@
 tslint.json
 
 # Compiled & Generated
-src/*.js
-src/**/*.js
-
-test/*.js
-test/**/*.js
+*.js
 
 # NPM
 node_modules/
-bower_components/
-npm-debug.log
 
 *.log
 
+release/
 tmp/
