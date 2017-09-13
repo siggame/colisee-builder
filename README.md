@@ -1,16 +1,26 @@
-# siggame/colisee-builder  
+# siggame/colisee-builder
+
+REST Service that builds client code into Docker Images which are then pushed to a Docker Registry.
+
 [![Travis](https://img.shields.io/travis/siggame/colisee-builder.svg?style=flat-square)](https://travis-ci.org/siggame/colisee-builder) 
 [![David](https://img.shields.io/david/siggame/colisee-builder.svg?style=flat-square)]()
 [![Docker Pulls](https://img.shields.io/docker/pulls/siggame/colisee-builder.svg?style=flat-square)](https://hub.docker.com/r/siggame/colisee-builder/)
-[![GitHub release](https://img.shields.io/github/release/siggame/colisee-builder.svg?style=flat-square)](https://github.com/siggame/colisee-builder/releases)  
-
-REST Service that builds client code into Docker Images saved as zip files.
+[![GitHub release](https://img.shields.io/github/release/siggame/colisee-builder.svg?style=flat-square)](https://github.com/siggame/colisee-builder/releases)
 
 ## Table Of Contents
+
 - [Description](#description)
-- [REST API](#rest-api)
+- [Getting Started](#getting-started)
+
+- [Usage](#usage)
+  - [REST API](#rest-api)
     - [Interfaces](#interfaces)
     - [API](#api)
+
+- [Contributors](#contributors)
+- [Change Log](#change-log)
+- [License](#license)
+- [Contributing](#contributing)
 
 ## Description
 
@@ -18,9 +28,25 @@ The purpose of this application is to provide a service to the ACM SIG-Game Web 
 
 > [1] Given that the competition is 24 hours, and that a competitor will expect the build to be running in a live environment ASAP, we can assume a reasonable amount time is defined as 5 minutes. At any point in time beyond 5 minutes, the builder service cannot guarantee that the requested data was preserved. Ideally the Web Server will retrieve the data within **5 seconds** of the build being completed.
 
-## REST API
+## Getting Started
 
-### Interfaces
+Using docker.
+
+```bash
+docker pull siggame/colisee-builder
+```
+
+Using npm.
+
+```bash
+npm run setup && npm run start:prod
+```
+
+## Usage
+
+### REST API
+
+#### Interfaces
 
 The following interfaces & types are defined and referenced below in the API endpoints.
 
@@ -42,9 +68,9 @@ interface HttpError {
 }
 ```
 
-### API
+#### API
 -----------------------------------------
-### `GET /` Retrieve status of all builds
+#### `GET /` Retrieve status of all builds
 
 Retrieve the status of all builds. The following query parameters are acceptable.
 
@@ -67,7 +93,7 @@ HttpError
 ```
 
 -----------------------------------------
-### `GET /{id}` Retrieve status of a build
+#### `GET /{id}` Retrieve status of a build
 
 Retrieve the status of a build.
 
@@ -81,7 +107,7 @@ HttpError
 ```
 
 -----------------------------------------
-### `GET /{id}/log` Retrieve log of a build
+#### `GET /{id}/log` Retrieve log of a build
 
 Retrieve a log of the build. The built must have status `failed` or `succeeded`. Otherwise, endpoint will return a 403 - Forbidden.
 
@@ -96,7 +122,7 @@ HttpError;
 ```
 
 -----------------------------------------
-### `GET /{id}/image` Retrieve built docker image of a build
+#### `GET /{id}/image` Retrieve built docker image of a build
 
 Retrieve the built version of the code as a saved docker image. The built must have status `succeeded`. Otherwise, endpoint will return a 403 - Forbidden.
 
@@ -111,7 +137,7 @@ HttpError;
 ```
 
 -----------------------------------------
-### `POST /` Queue new build
+#### `POST /` Queue new build
 
 Push a new build into the queue. The **body** of the request must contain the **ZIP file** of course that is to be built.
 
@@ -123,3 +149,22 @@ BuildStatus;
 ```
 HttpError;
 ```
+
+## Contributors
+
+- [Russley Shaw](https://github.com/russleyshaw)
+- [user404d](https://github.com/user404d)
+- [Hannah Reinbolt](https://github.com/LoneGalaxy)
+- [Matthew Qualls](https://github.com/MatthewQualls)
+
+## Change Log
+
+View our [CHANGELOG.md](https://github.com/siggame/colisee-builder/blob/master/CHANGELOG.md)
+
+## License
+
+View our [LICENSE.md](https://github.com/siggame/colisee/blob/master/LICENSE.md)
+
+## Contributing
+
+View our [CONTRIBUTING.md](https://github.com/siggame/colisee/blob/master/CONTRIBUTING.md)

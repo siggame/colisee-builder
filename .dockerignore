@@ -5,7 +5,13 @@
 .env
 
 # NodeJS & NPM
-npm-debug.log
+node_modules/
+*.js
+
+.travis.yml
+
+.dockerignore
+Dockerfile
 
 # Git
 .git/
@@ -14,4 +20,7 @@ npm-debug.log
 
 *.log
 
+README.md
+CHANGELOG.md
+release/
 tmp/
