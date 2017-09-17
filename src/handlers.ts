@@ -4,8 +4,11 @@ import { BadRequest } from "http-errors";
 import { isArrayLike, isNil, isString } from "lodash";
 import * as multer from "multer";
 
+import { Builder } from "./builder";
 import { catchError, createReadableTarStream } from "./helpers";
+import { REGISTRY_URL } from "./vars";
 
+const builder = new Builder({ queueLimit: 10 });
 const upload = multer();
 
 function assertFileType(req: Request) {
@@ -42,15 +45,23 @@ function assertIdsQueryParam(req: Request) {
     }
 }
 
+function assertTeamNameParam(req: Request) {
+    if (isNil(req.params.teamId)) {
+        throw new BadRequest("Team ID must not be null");
+    } else if (!isString(req.params.teamId)) {
+        throw new BadRequest("Team ID must be a string");
+    }
+}
+
 export const getBuildStatuses: RequestHandler[] = [
-    catchError(async (req, res, next) => {
+    catchError<RequestHandler>(async (req, res, next) => {
         assertIdsQueryParam(req);
         res.end();
     }),
 ];
 
 export const getBuildStatus: RequestHandler[] = [
-    catchError(async (req, res, next) => {
+    catchError<RequestHandler>(async (req, res, next) => {
         assertIdPathParam(req);
         res.end();
     }),
@@ -58,9 +69,17 @@ export const getBuildStatus: RequestHandler[] = [
 
 export const enqueueBuild: RequestHandler[] = [
     upload.single("submission"),
-    catchError(async (req, res, next) => {
+    catchError<RequestHandler>(async (req, res, next) => {
         assertFileType(req);
-        await createReadableTarStream(req.file.buffer);
+        assertTeamNameParam(req);
+        builder.submissions.set(req.params.teamId, {
+            context: await createReadableTarStream(req.file.buffer),
+            id: `${req.params.teamId}`,
+            startedTime: new Date(),
+            status: "queued",
+            tag: `${REGISTRY_URL}/${req.params.teamId}:${1}`,
+        });
+        builder.build(req.params.teamId);
         res.end("enqueued build");
     }),
 ];
