@@ -9,7 +9,7 @@ export type BuildStatus = "queued" | "building" | "failed" | "finished";
 export interface IBuildSubmission {
     context: NodeJS.ReadableStream;
     finishedTime?: Date;
-    id: string;
+    id: number;
     startedTime: Date;
     status: BuildStatus;
     tag: string;
@@ -33,12 +33,14 @@ export class Builder {
     async build(name: string) {
         const submission = this.submissions.get(name);
         if (submission) {
-            const buildOutput = await this.docker.buildImage(submission.context, { t: `${submission.tag}` });
+            const buildOutput: NodeJS.ReadableStream = await this.docker.buildImage(submission.context, { t: `${submission.tag}` });
             // pipe build ouptut to log file or remote storage
             submission.status = "building";
+            await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
             buildOutput.pipe(process.stdout);
-            buildOutput.on("error", (error: any) => {
+            buildOutput.on("error", async (error: any) => {
                 submission.status = "failed";
+                await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
                 winston.error(error);
             });
             buildOutput.on("end", async () => {
@@ -47,12 +49,14 @@ export class Builder {
                 const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: REGISTRY_URL }) });
                 // pipe push response to log file or remote storage
                 pushOutput.pipe(process.stdout);
-                pushOutput.on("error", (error) => {
+                pushOutput.on("error", async (error) => {
                     submission.status = "failed";
+                    await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
                     winston.error(error);
                 });
-                pushOutput.on("end", () => {
+                pushOutput.on("end", async () => {
                     submission.status = "finished";
+                    await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
                     winston.info(`successfully pushed ${submission.tag}`);
                 });
             });
