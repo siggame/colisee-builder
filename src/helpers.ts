@@ -1,6 +1,7 @@
+import { db } from "@siggame/colisee-lib";
 import * as admZip from "adm-zip";
 import * as fileType from "file-type";
-import { noop } from "lodash";
+import { isNil, noop } from "lodash";
 import { Readable } from "stream";
 import * as tar from "tar-stream";
 import * as zlib from "zlib";
@@ -53,4 +54,11 @@ function makeReadableStream(cb?: (stream: Readable) => void) {
 
 export function catchError<T extends Function>(fn: T) {
     return async (...args: any[]) => fn(...args).catch(args[2]);
+}
+
+export async function createSubmission(teamId: string) {
+    const [{ max: recentVersion }] = await db.connection("submissions").where({ team_id: teamId }).max("version");
+    const newVersion = isNil(recentVersion) ? 0 : recentVersion + 1;
+    return db.connection("submissions").insert({ status: "queued", team_id: teamId, version: newVersion }, "*")
+        .then(db.rowsToSubmissions);
 }

@@ -1,11 +1,12 @@
+import { db } from "@siggame/colisee-lib";
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
 import { BadRequest } from "http-errors";
-import { isArrayLike, isNil, isString } from "lodash";
+import { isArrayLike, isNil, isNumber, isString, toNumber } from "lodash";
 import * as multer from "multer";
 
 import { Builder } from "./builder";
-import { catchError, createReadableTarStream } from "./helpers";
+import { catchError, createReadableTarStream, createSubmission } from "./helpers";
 import { REGISTRY_URL } from "./vars";
 
 const builder = new Builder({ queueLimit: 10 });
@@ -45,11 +46,19 @@ function assertIdsQueryParam(req: Request) {
     }
 }
 
-function assertTeamNameParam(req: Request) {
+async function assertTeamIdParamValid(req: Request) {
     if (isNil(req.params.teamId)) {
         throw new BadRequest("Team ID must not be null");
-    } else if (!isString(req.params.teamId)) {
-        throw new BadRequest("Team ID must be a string");
+    } else {
+        const teamIdAsNumber = toNumber(req.params.teamId);
+        if (!isNumber(teamIdAsNumber)) {
+            throw new BadRequest("Team ID must be a number");
+        } else {
+            const [exists] = await db.connection("teams").where({ id: req.params.teamId });
+            if (isNil(exists)) {
+                throw new BadRequest(`No team exists with the id ${req.params.teamId}`);
+            }
+        }
     }
 }
 
@@ -71,13 +80,14 @@ export const enqueueBuild: RequestHandler[] = [
     upload.single("submission"),
     catchError<RequestHandler>(async (req, res, next) => {
         assertFileType(req);
-        assertTeamNameParam(req);
+        await assertTeamIdParamValid(req).catch((e) => { throw e; });
+        const [newSubmission] = await createSubmission(req.params.teamId);
         builder.submissions.set(req.params.teamId, {
             context: await createReadableTarStream(req.file.buffer),
-            id: `${req.params.teamId}`,
+            id: newSubmission.id,
             startedTime: new Date(),
             status: "queued",
-            tag: `${REGISTRY_URL}/${req.params.teamId}:${1}`,
+            tag: `${REGISTRY_URL}/${req.params.teamId}:${newSubmission.version}`,
         });
         builder.build(req.params.teamId);
         res.end("enqueued build");
