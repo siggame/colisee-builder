@@ -1,15 +1,14 @@
 import { db } from "@siggame/colisee-lib";
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
-import { BadRequest } from "http-errors";
-import { isArrayLike, isNil, isNumber, isString, toNumber } from "lodash";
+import { BadRequest, NotFound } from "http-errors";
+import { isArrayLike, isNil, isNumber, isString, omit, toNumber } from "lodash";
 import * as multer from "multer";
 
-import { Builder } from "./builder";
+import { builder } from "./builder";
 import { catchError, createReadableTarStream, createSubmission } from "./helpers";
 import { REGISTRY_URL } from "./vars";
 
-const builder = new Builder({ queueLimit: 10 });
 const upload = multer();
 
 function assertFileType(req: Request) {
@@ -22,10 +21,6 @@ function assertFileType(req: Request) {
     }
 }
 
-/**
- * Assert that if the request contains the `id` path parameter, it is a string. Throw 400 otherwise.
- * @param req 
- */
 function assertIdPathParam(req: Request) {
     if (isNil(req.params.id)) {
         throw new BadRequest("ID must be provided");
@@ -34,10 +29,6 @@ function assertIdPathParam(req: Request) {
     }
 }
 
-/**
- * Assert that if the request contains the `id` query parameter and is an array of strings. Throw 400 otherwise.
- * @param req 
- */
 function assertIdsQueryParam(req: Request) {
     if (isNil(req.query.ids)) {
         throw new BadRequest("IDs must be provided");
@@ -65,6 +56,10 @@ async function assertTeamIdParamValid(req: Request) {
 export const getBuildStatuses: RequestHandler[] = [
     catchError<RequestHandler>(async (req, res, next) => {
         assertIdsQueryParam(req);
+        const submitted = Array.from(builder.submissions.entries())
+            .filter(([id]) => req.query.ids.includes(id))
+            .map(([id, submission]) => [id, omit(submission, ["context"])]);
+        res.json(submitted);
         res.end();
     }),
 ];
@@ -72,7 +67,12 @@ export const getBuildStatuses: RequestHandler[] = [
 export const getBuildStatus: RequestHandler[] = [
     catchError<RequestHandler>(async (req, res, next) => {
         assertIdPathParam(req);
-        res.end();
+        if (builder.submissions.has(req.params.id)) {
+            res.json(omit(builder.submissions.get(req.params.id), ["context"]));
+            res.end();
+        } else {
+            throw new NotFound(`No submission found for id ${req.params.id}`);
+        }
     }),
 ];
 
@@ -80,16 +80,17 @@ export const enqueueBuild: RequestHandler[] = [
     upload.single("submission"),
     catchError<RequestHandler>(async (req, res, next) => {
         assertFileType(req);
-        await assertTeamIdParamValid(req).catch((e) => { throw e; });
-        const [newSubmission] = await createSubmission(req.params.teamId);
+        await assertTeamIdParamValid(req)
+            .catch((e) => { throw e; });
+        const [newSubmission] = await createSubmission(req.params.teamId)
+            .catch((e) => { throw e; });
         builder.submissions.set(req.params.teamId, {
-            context: await createReadableTarStream(req.file.buffer),
+            context: createReadableTarStream(req.file.buffer),
             id: newSubmission.id,
             startedTime: new Date(),
             status: "queued",
             tag: `${REGISTRY_URL}/${req.params.teamId}:${newSubmission.version}`,
         });
-        builder.build(req.params.teamId);
         res.end("enqueued build");
     }),
 ];
