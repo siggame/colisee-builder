@@ -57,8 +57,13 @@ export function catchError<T extends Function>(fn: T) {
 }
 
 export async function createSubmission(teamId: string) {
-    const [{ max: recentVersion }] = await db.connection("submissions").where({ team_id: teamId }).max("version");
+    const [{ max: recentVersion }] = await db.connection("submissions")
+        .where({ team_id: teamId })
+        .max("version")
+        .catch((e) => { throw e; });
     const newVersion = isNil(recentVersion) ? 0 : recentVersion + 1;
-    return db.connection("submissions").insert({ status: "queued", team_id: teamId, version: newVersion }, "*")
-        .then(db.rowsToSubmissions);
+    const newSubmission = await db.connection("submissions").insert({ status: "queued", team_id: teamId, version: newVersion }, "*")
+        .then(db.rowsToSubmissions)
+        .catch((e) => { throw e; });
+    return newSubmission;
 }
