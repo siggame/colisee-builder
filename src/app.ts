@@ -8,8 +8,9 @@ import { ErrorRequestHandler, RequestHandler } from "express";
 import { HttpError } from "http-errors";
 import * as winston from "winston";
 
+import { builder } from "./builder";
 import { enqueueBuild, getBuildStatus, getBuildStatuses } from "./handlers";
-import * as vars from "./vars";
+import { PORT } from "./vars";
 
 winston.configure({
     transports: [
@@ -40,13 +41,24 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(logger);
 app.use(errorHandler);
 
+app.get("/start", (req, res) => {
+    builder.run();
+    winston.info("Started builder");
+    res.end();
+});
 app.get("/status/", ...getBuildStatuses);
 app.get("/status/:id", ...getBuildStatus);
+app.get("/stop", (req, res) => {
+    builder.stop();
+    winston.info("Stopped builder");
+    res.end();
+});
 app.post("/submit/:teamId", ...enqueueBuild);
 
 export default () => {
-    app.listen(vars.PORT, () => {
-        winston.info(`Listening on port ${vars.PORT}...`);
+    app.listen(PORT, () => {
+        builder.run();
+        winston.info(`Listening on port ${PORT}...`);
     });
 };
 
