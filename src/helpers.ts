@@ -12,7 +12,15 @@ interface IPacker extends Readable {
     finalize(): void;
 }
 
-export function createReadableTarStream(buffer: Buffer) {
+/**
+ * Create a ReadableStream of a Buffer containing `.tar` 
+ * from a Buffer containing `.gz` | `.tar` | `.zip`
+ * 
+ * @export
+ * @param {Buffer} buffer 
+ * @returns {Readable} 
+ */
+export function createReadableTarStream(buffer: Buffer): Readable {
     const { ext } = fileType(buffer);
     if (ext === "zip") {
         return zipToTarStream(buffer);
@@ -52,11 +60,27 @@ function makeReadableStream(cb?: (stream: Readable) => void) {
     return contextStream;
 }
 
+/**
+ * Pass errors thrown by fn to the 3rd callback
+ * (eg. catchError<RequestHandler>((req, res, next) => { throw new Error("test"); }); )
+ * 
+ * @export
+ * @template T 
+ * @param {T extends Function} fn 
+ * @returns {T}
+ */
 export function catchError<T extends Function>(fn: T) {
     return async (...args: any[]) => fn(...args).catch(args[2]);
 }
 
-export async function createSubmission(teamId: string) {
+/**
+ * Creates a new submission and increments the version number.
+ * 
+ * @export
+ * @param {string} teamId 
+ * @returns {Promise<db.Submission[]>}
+ */
+export async function createSubmission(teamId: string): Promise<db.Submission[]> {
     const [{ max: recentVersion }] = await db.connection("submissions")
         .where({ team_id: teamId })
         .max("version")
