@@ -1,6 +1,7 @@
+import { db } from "@siggame/colisee-lib";
 import * as admZip from "adm-zip";
 import * as fileType from "file-type";
-import { noop } from "lodash";
+import { isNil, noop } from "lodash";
 import { Readable } from "stream";
 import * as tar from "tar-stream";
 import * as zlib from "zlib";
@@ -11,7 +12,14 @@ interface IPacker extends Readable {
     finalize(): void;
 }
 
-export function createReadableTarStream(buffer: Buffer) {
+/**
+ * Create a ReadableStream of a Buffer containing `.tar` 
+ * from a Buffer containing `.gz` | `.tar` | `.zip`
+ * 
+ * @export
+ * @param buffer `.gz`, `.tar`, or `.zip` buffer
+ */
+export function createReadableTarStream(buffer: Buffer): Readable {
     const { ext } = fileType(buffer);
     if (ext === "zip") {
         return zipToTarStream(buffer);
@@ -51,6 +59,30 @@ function makeReadableStream(cb?: (stream: Readable) => void) {
     return contextStream;
 }
 
-export function catchError<T>(fn: (...args: any[]) => Promise<T>) {
+/**
+ * Pass errors thrown by fn to the 3rd callback
+ * (eg. catchError<RequestHandler>((req, res, next) => { throw new Error("test"); }); )
+ * 
+ * @export
+ * @param fn Function to be wrapped with catch handler added
+ */
+export function catchError<T extends Function>(fn: T) {
     return async (...args: any[]) => fn(...args).catch(args[2]);
+}
+
+/**
+ * Creates a new submission and increments the version number.
+ * 
+ * @export
+ */
+export async function createSubmission(teamId: string): Promise<db.Submission[]> {
+    const [{ max: recentVersion }] = await db.connection("submissions")
+        .where({ team_id: teamId })
+        .max("version")
+        .catch((e) => { throw e; });
+    const newVersion = isNil(recentVersion) ? 0 : recentVersion + 1;
+    const newSubmission = await db.connection("submissions").insert({ status: "queued", team_id: teamId, version: newVersion }, "*")
+        .then(db.rowsToSubmissions)
+        .catch((e) => { throw e; });
+    return newSubmission;
 }
