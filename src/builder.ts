@@ -22,7 +22,7 @@ interface IBuilderOptions {
 }
 
 /**
- * 
+ * Queues build submissions and builds them.
  * 
  * @class Builder
  */
@@ -88,7 +88,7 @@ class Builder {
      * is pushed to a registry at `opts.registry`.
      * 
      * @private
-     * @param {string} name 
+     * @param id Team id for the build.
      * @memberof Builder
      */
     private async build(id: string): Promise<void> {
