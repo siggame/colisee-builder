@@ -12,7 +12,7 @@ import { REGISTRY_URL } from "./vars";
 const upload = multer();
 
 function assertFileType(req: Request) {
-    if (isNil(req.file)) {
+    if (isNil(req.file) || req.file.size === 0) {
         throw new BadRequest("File must be uploaded");
     }
     const { ext } = fileType(req.file.buffer);
@@ -58,7 +58,7 @@ export const getBuildStatuses: RequestHandler[] = [
         assertIdsQueryParam(req);
         const submitted = Array.from(builder.submissions.entries())
             .filter(([id]) => req.query.ids.includes(id))
-            .map(([id, submission]) => [id, omit(submission, ["context"])]);
+            .map(([id, queue]) => queue.empty() ? [id, {}] : [id, omit(queue.front(), ["context"])]);
         res.json(submitted);
         res.end();
     }),
@@ -67,8 +67,9 @@ export const getBuildStatuses: RequestHandler[] = [
 export const getBuildStatus: RequestHandler[] = [
     catchError<RequestHandler>(async (req, res, next) => {
         assertIdPathParam(req);
-        if (builder.submissions.has(req.params.id)) {
-            res.json(omit(builder.submissions.get(req.params.id), ["context"]));
+        const queue = builder.submissions.get(req.params.id);
+        if (queue && queue.size() > 0) {
+            res.json(omit(queue.front(), ["context"]));
             res.end();
         } else {
             throw new NotFound(`No submission found for id ${req.params.id}`);
@@ -84,7 +85,7 @@ export const enqueueBuild: RequestHandler[] = [
             .catch((e) => { throw e; });
         const [newSubmission] = await createSubmission(req.params.teamId)
             .catch((e) => { throw e; });
-        builder.submissions.set(req.params.teamId, {
+        builder.enqueue(req.params.teamId, {
             context: createReadableTarStream(req.file.buffer),
             id: newSubmission.id,
             startedTime: new Date(),
