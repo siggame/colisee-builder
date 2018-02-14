@@ -81,7 +81,12 @@ export async function createSubmission(teamId: string): Promise<db.Submission[]>
         .max("version")
         .catch((e) => { throw e; });
     const newVersion = isNil(recentVersion) ? 0 : recentVersion + 1;
-    const newSubmission = await db.connection("submissions").insert({ status: "queued", team_id: teamId, version: newVersion }, "*")
+    const newSubmission = await db.connection("submissions").insert({
+        image_name: "not_pushed",
+        status: "queued",
+        team_id: teamId,
+        version: newVersion,
+    }, "*")
         .then(db.rowsToSubmissions)
         .catch((e) => { throw e; });
     return newSubmission;
