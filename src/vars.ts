@@ -1,4 +1,4 @@
-import { defaultTo, toNumber, toString } from "lodash";
+import { defaultTo, toNumber } from "lodash";
 
 export const BUILD_INTERVAL: number = defaultTo<number>(toNumber(process.env.BUILD_INTERVAL), 1500);
 export const BUILD_LIMIT: number = defaultTo<number>(toNumber(process.env.BUILD_LIMIT), 10);
