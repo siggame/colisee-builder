@@ -87,10 +87,10 @@ export const enqueueBuild: RequestHandler[] = [
             .catch((e) => { throw e; });
         builder.enqueue(req.params.teamId, {
             context: createReadableTarStream(req.file.buffer),
-            id: newSubmission.id,
+            id: newSubmission.teamId,
             startedTime: new Date(),
             status: "queued",
-            tag: `${REGISTRY_URL}/${req.params.teamId}:${newSubmission.version}`,
+            tag: `${newSubmission.version}`,
         });
         res.end("enqueued build");
     }),
