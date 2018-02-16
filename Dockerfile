@@ -19,6 +19,7 @@ RUN npm run build:dist && pkg -t ${NODE}-${PLATFORM}-${ARCH} --output builder re
 
 FROM alpine:latest
 
+RUN mkdir -p /app/output
 WORKDIR /app
 ENV NODE_ENV=production
 

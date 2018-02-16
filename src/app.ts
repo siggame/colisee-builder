@@ -5,12 +5,13 @@ import * as bodyParser from "body-parser";
 import * as cors from "cors";
 import * as express from "express";
 import { ErrorRequestHandler, RequestHandler } from "express";
+import * as fs from "fs";
 import { HttpError } from "http-errors";
 import * as winston from "winston";
 
 import { builder } from "./builder";
 import { enqueueBuild, getBuildStatus, getBuildStatuses } from "./handlers";
-import { PORT } from "./vars";
+import { OUTPUT_DIR, PORT } from "./vars";
 
 winston.configure({
     transports: [
@@ -56,6 +57,9 @@ app.get("/stop", (req, res) => {
 app.post("/submit/:teamId", ...enqueueBuild);
 
 export default () => {
+    if (!fs.existsSync(OUTPUT_DIR)) {
+        fs.mkdirSync(OUTPUT_DIR);
+    }
     app.listen(PORT, () => {
         builder.run();
         winston.info(`Listening on port ${PORT}...`);
