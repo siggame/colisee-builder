@@ -7,7 +7,6 @@ import * as multer from "multer";
 
 import { builder } from "./builder";
 import { catchError, createReadableTarStream, createSubmission } from "./helpers";
-import { REGISTRY_URL } from "./vars";
 
 const upload = multer();
 
@@ -87,10 +86,11 @@ export const enqueueBuild: RequestHandler[] = [
             .catch((e) => { throw e; });
         builder.enqueue(req.params.teamId, {
             context: createReadableTarStream(req.file.buffer),
-            id: newSubmission.teamId,
+            id: newSubmission.id,
             startedTime: new Date(),
             status: "queued",
-            tag: `${newSubmission.version}`,
+            tag: newSubmission.version,
+            team_id: newSubmission.teamId,
         });
         res.end("enqueued build");
     }),

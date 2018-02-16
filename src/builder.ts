@@ -1,11 +1,12 @@
 import { db } from "@siggame/colisee-lib";
 import * as Docker from "dockerode";
 import * as fs from "fs";
+import * as request from "request";
 import { Deque } from "tstl";
 import * as winston from "winston";
 import * as zlib from "zlib";
 
-import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_URL } from "./vars";
+import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_HOST, REGISTRY_PORT } from "./vars";
 
 type BuildStatus = "queued" | "building" | "failed" | "finished";
 
@@ -15,7 +16,8 @@ interface IBuildSubmission {
     id: number;
     startedTime: Date;
     status: BuildStatus;
-    tag: string;
+    tag: number;
+    team_id: number;
 }
 
 interface IBuilderOptions {
@@ -40,12 +42,13 @@ class Builder {
 
     /**
      * Creates an instance of Builder.
-     * @param {IBuilderOptions} [opts={ buildInterval: BUILD_INTERVAL, queueLimit: BUILD_LIMIT, registry: REGISTRY_URL }] 
+     // tslint:disable-next-line:max-line-length
+     * @param {IBuilderOptions} [opts={ buildInterval: BUILD_INTERVAL, queueLimit: BUILD_LIMIT, registry: `${REGISTRY_HOST}:${REGISTRY_PORT}` }] 
      * @memberof Builder
      */
     constructor(opts: IBuilderOptions = {
         buildInterval: BUILD_INTERVAL, buildLimit: BUILD_LIMIT,
-        output: OUTPUT_DIR, registry: REGISTRY_URL,
+        output: OUTPUT_DIR, registry: `${REGISTRY_HOST}:${REGISTRY_PORT}`,
     }) {
         this.docker = new Docker();
         this.opts = opts;
@@ -123,18 +126,18 @@ class Builder {
             };
 
             let buildOutput: NodeJS.ReadableStream | undefined;
-            const imageName = `${this.opts.registry}/team_${submission.id}:${submission.tag}`;
+            submission.status = "building";
+            await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
+            const imageName = `${this.opts.registry}/team_${submission.team_id}:${submission.tag}`;
+
             try {
                 buildOutput = await this.docker.buildImage(submission.context, { t: imageName });
             } catch (error) {
-                submission.status = "failed";
-                await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
-                winston.error(error);
+                await handleError(error);
             }
-            submission.status = "building";
-            await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
+
             if (buildOutput) {
-                const writeBuildOutput = fs.createWriteStream(`${this.opts.output}/team_${submission.id}_${submission.tag}.log.gz`);
+                const writeBuildOutput = fs.createWriteStream(`${this.opts.output}/team_${submission.team_id}_${submission.tag}.log.gz`);
                 const compressor = zlib.createGzip();
                 buildOutput.pipe(compressor, { end: false }).pipe(writeBuildOutput);
 
@@ -147,13 +150,30 @@ class Builder {
                     pushOutput.pipe(compressor).pipe(writeBuildOutput);
 
                     pushOutput.on("error", handleError);
-                    pushOutput.on("end", async () => {
-                        submission.status = "finished";
-                        await db.connection("submissions").update({
-                            image_name: imageName,
-                            status: submission.status,
-                        }).where({ id: submission.id });
-                        winston.info(`successfully pushed ${submission.tag}`);
+                    pushOutput.on("end", () => {
+                        /* https://docs.docker.com/registry/spec/api/ */
+                        request.get({
+                            json: true, url: `http://${this.opts.registry}/v2/team_${submission.team_id}/tags/list`,
+                        }, async (error, response, images) => {
+                            if (error) {
+                                winston.error(error);
+                                await handleError(error);
+                            } else if (images.tags && (<Array<string>>images.tags).indexOf(`${submission.tag}`) >= 0) {
+                                submission.status = "finished";
+                                await db.connection("submissions").update({
+                                    image_name: imageName,
+                                    status: submission.status,
+                                }).where({ id: submission.id });
+                                winston.info(`successfully pushed ${imageName}`);
+                            } else {
+                                if (images.errors) {
+                                    winston.error(images.errors);
+                                    await handleError(images.errors);
+                                } else {
+                                    await handleError(new Error(`failed to push image ${imageName}`));
+                                }
+                            }
+                        });
                     });
                 });
             }
