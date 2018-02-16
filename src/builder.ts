@@ -1,9 +1,11 @@
 import { db } from "@siggame/colisee-lib";
 import * as Docker from "dockerode";
+import * as fs from "fs";
 import { Deque } from "tstl";
 import * as winston from "winston";
+import * as zlib from "zlib";
 
-import { BUILD_INTERVAL, BUILD_LIMIT, REGISTRY_URL } from "./vars";
+import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_URL } from "./vars";
 
 type BuildStatus = "queued" | "building" | "failed" | "finished";
 
@@ -19,6 +21,7 @@ interface IBuildSubmission {
 interface IBuilderOptions {
     buildInterval: number;
     buildLimit: number;
+    output: string;
     registry: string;
 }
 
@@ -40,7 +43,10 @@ class Builder {
      * @param {IBuilderOptions} [opts={ buildInterval: BUILD_INTERVAL, queueLimit: BUILD_LIMIT, registry: REGISTRY_URL }] 
      * @memberof Builder
      */
-    constructor(opts: IBuilderOptions = { buildInterval: BUILD_INTERVAL, buildLimit: BUILD_LIMIT, registry: REGISTRY_URL }) {
+    constructor(opts: IBuilderOptions = {
+        buildInterval: BUILD_INTERVAL, buildLimit: BUILD_LIMIT,
+        output: OUTPUT_DIR, registry: REGISTRY_URL,
+    }) {
         this.docker = new Docker();
         this.opts = opts;
         this.submissions = new Map<string, BuildQueue>();
@@ -56,15 +62,18 @@ class Builder {
     public run(): void {
         if (this.runTimer == null) {
             this.runTimer = setInterval(() => {
+                // let queue make progress
                 this.submissions.forEach((queue, _) => {
                     if (queue.size() > 0 && (queue.front().status === "finished" || queue.front().status === "failed")) {
                         queue.pop_front();
                     }
                 });
+                // count currently building submissions
                 const building = Array.from(this.submissions.values())
                     .reduce((count, queue) =>
                         (queue.size() > 0 && queue.front().status === "building") ? count + 1 : count,
                         0);
+                // invoke build on queued builds if below bulid limit
                 if (building < this.opts.buildLimit) {
                     Array.from(this.submissions.entries())
                         .filter(([, queue]) => queue.size() > 0 && queue.front().status === "queued")
@@ -114,8 +123,9 @@ class Builder {
             };
 
             let buildOutput: NodeJS.ReadableStream | undefined;
+            const imageName = `${this.opts.registry}/team_${submission.id}:${submission.tag}`;
             try {
-                buildOutput = await this.docker.buildImage(submission.context, { t: `${submission.tag}` });
+                buildOutput = await this.docker.buildImage(submission.context, { t: imageName });
             } catch (error) {
                 submission.status = "failed";
                 await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
@@ -124,20 +134,23 @@ class Builder {
             submission.status = "building";
             await db.connection("submissions").update({ status: submission.status }).where({ id: submission.id });
             if (buildOutput) {
-                // TODO: replace with winston writing to enabled transport
-                buildOutput.pipe(process.stdout);
+                const writeBuildOutput = fs.createWriteStream(`${this.opts.output}/team_${submission.id}_${submission.tag}.log.gz`);
+                const compressor = zlib.createGzip();
+                buildOutput.pipe(compressor, { end: false }).pipe(writeBuildOutput);
+
                 buildOutput.on("error", handleError);
                 buildOutput.on("end", async () => {
-                    winston.info(`successfully built ${submission.tag}`);
-                    const image = await this.docker.getImage(submission.tag);
+                    winston.info(`successfully built ${imageName}`);
+
+                    const image = await this.docker.getImage(imageName);
                     const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry }) });
-                    // TODO: replace with winston writing to enabled transport
-                    pushOutput.pipe(process.stdout);
+                    pushOutput.pipe(compressor).pipe(writeBuildOutput);
+
                     pushOutput.on("error", handleError);
                     pushOutput.on("end", async () => {
                         submission.status = "finished";
                         await db.connection("submissions").update({
-                            image_name: submission.tag,
+                            image_name: imageName,
                             status: submission.status,
                         }).where({ id: submission.id });
                         winston.info(`successfully pushed ${submission.tag}`);
