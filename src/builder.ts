@@ -1,6 +1,7 @@
 import { db } from "@siggame/colisee-lib";
 import * as Docker from "dockerode";
 import * as fs from "fs";
+import { basename } from "path";
 import * as request from "request";
 import { Deque } from "tstl";
 import * as winston from "winston";
@@ -14,6 +15,7 @@ interface IBuildSubmission {
     context: NodeJS.ReadableStream;
     finishedTime?: Date;
     id: number;
+    log_url?: string;
     startedTime: Date;
     status: BuildStatus;
     tag: number;
@@ -137,7 +139,10 @@ class Builder {
             }
 
             if (buildOutput) {
+                // TODO: decide what this should really be
+                submission.log_url = `builder/${basename(this.opts.output)}/team_${submission.team_id}_${submission.tag}.log.gz`;
                 const writeBuildOutput = fs.createWriteStream(`${this.opts.output}/team_${submission.team_id}_${submission.tag}.log.gz`);
+
                 const compressor = zlib.createGzip();
                 buildOutput.pipe(compressor, { end: false }).pipe(writeBuildOutput);
 
@@ -162,6 +167,7 @@ class Builder {
                                 submission.status = "finished";
                                 await db.connection("submissions").update({
                                     image_name: imageName,
+                                    log_url: submission.log_url,
                                     status: submission.status,
                                 }).where({ id: submission.id });
                                 winston.info(`successfully pushed ${imageName}`);
