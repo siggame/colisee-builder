@@ -9,7 +9,7 @@ import * as fs from "fs";
 import { HttpError } from "http-errors";
 import * as winston from "winston";
 
-import { builder } from "./builder";
+import { builder } from "./Builder/builder";
 import { enqueueBuild, getBuildStatus, getBuildStatuses } from "./handlers";
 import { OUTPUT_DIR, PORT } from "./vars";
 

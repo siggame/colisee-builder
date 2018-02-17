@@ -1,12 +1,12 @@
-import { db } from "@siggame/colisee-lib";
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
 import { BadRequest, NotFound } from "http-errors";
 import { isArrayLike, isNil, isNumber, isString, omit, toNumber } from "lodash";
 import * as multer from "multer";
 
-import { builder } from "./builder";
-import { catchError, createReadableTarStream, createSubmission } from "./helpers";
+import { builder } from "./Builder/builder";
+import { createSubmission, teamExists } from "./db";
+import { catchError, createReadableTarStream } from "./helpers";
 
 const upload = multer();
 
@@ -44,8 +44,7 @@ async function assertTeamIdParamValid(req: Request) {
         if (!isNumber(teamIdAsNumber)) {
             throw new BadRequest("Team ID must be a number");
         } else {
-            const [exists] = await db.connection("teams").where({ id: req.params.teamId });
-            if (isNil(exists)) {
+            if (!(await teamExists(teamIdAsNumber))) {
                 throw new BadRequest(`No team exists with the id ${req.params.teamId}`);
             }
         }
@@ -81,16 +80,12 @@ export const enqueueBuild: RequestHandler[] = [
     catchError<RequestHandler>(async (req, res, next) => {
         assertFileType(req);
         await assertTeamIdParamValid(req)
-            .catch((e) => { throw e; });
+            .catch((error) => { throw error; });
         const [newSubmission] = await createSubmission(req.params.teamId)
-            .catch((e) => { throw e; });
-        builder.enqueue(req.params.teamId, {
+            .catch((error) => { throw error; });
+        builder.submissions.enqueue(req.params.teamId, {
             context: createReadableTarStream(req.file.buffer),
-            id: newSubmission.id,
-            startedTime: new Date(),
-            status: "queued",
-            tag: newSubmission.version,
-            team_id: newSubmission.teamId,
+            ...newSubmission,
         });
         res.end("enqueued build");
     }),
