@@ -9,7 +9,7 @@ import * as fs from "fs";
 import { HttpError } from "http-errors";
 import * as winston from "winston";
 
-import { builder } from "./Builder/builder";
+import { builder } from "./Builder";
 import { enqueueBuild, getBuildStatus, getBuildStatuses } from "./handlers";
 import { OUTPUT_DIR, PORT } from "./vars";
 
@@ -47,8 +47,8 @@ app.get("/start", (req, res) => {
     winston.info("Started builder");
     res.end();
 });
-app.get("/status/", ...getBuildStatuses);
-app.get("/status/:id", ...getBuildStatus);
+app.get("/status", ...getBuildStatuses);
+app.get("/status/:teamId", ...getBuildStatus);
 app.get("/stop", (req, res) => {
     builder.stop();
     winston.info("Stopped builder");

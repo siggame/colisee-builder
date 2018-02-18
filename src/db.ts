@@ -1,7 +1,7 @@
 import { db } from "@siggame/colisee-lib";
 import { isNil } from "lodash";
 
-import { IBuildSubmission } from "./Builder/submission";
+import { IBuildSubmission } from "./Builder";
 
 /**
  * Creates a new submission and increments the version number.

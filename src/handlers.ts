@@ -4,7 +4,7 @@ import { BadRequest, NotFound } from "http-errors";
 import { isArrayLike, isNil, isNumber, isString, omit, toNumber } from "lodash";
 import * as multer from "multer";
 
-import { builder } from "./Builder/builder";
+import { builder } from "./Builder";
 import { createSubmission, teamExists } from "./db";
 import { catchError, createReadableTarStream } from "./helpers";
 
@@ -21,18 +21,18 @@ function assertFileType(req: Request) {
 }
 
 function assertIdPathParam(req: Request) {
-    if (isNil(req.params.id)) {
-        throw new BadRequest("ID must be provided");
-    } else if (!isString(req.params.id)) {
-        throw new BadRequest("ID must be a string");
+    if (isNil(req.params.teamId)) {
+        throw new BadRequest("Team id must be provided");
+    } else if (!isNumber(req.params.teamId)) {
+        throw new BadRequest("Team id must be a number");
     }
 }
 
 function assertIdsQueryParam(req: Request) {
     if (isNil(req.query.ids)) {
-        throw new BadRequest("IDs must be provided");
-    } else if (!isArrayLike(req.query.ids)) {
-        throw new BadRequest("IDs must be provided in an list");
+        throw new BadRequest("Team id's must be provided");
+    } else if (!isArrayLike<number>(req.query.ids)) {
+        throw new BadRequest("Team id's must be a list of numbers");
     }
 }
 
@@ -55,7 +55,7 @@ export const getBuildStatuses: RequestHandler[] = [
     catchError<RequestHandler>(async (req, res, next) => {
         assertIdsQueryParam(req);
         const submitted = Array.from(builder.submissions.entries())
-            .filter(([id]) => req.query.ids.includes(id))
+            .filter(([id]) => req.query.ids.indexOf(id) >= 0)
             .map(([id, queue]) => queue.empty() ? [id, {}] : [id, omit(queue.front(), ["context"])]);
         res.json(submitted);
         res.end();
