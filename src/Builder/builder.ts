@@ -117,7 +117,7 @@ class Builder {
      * @memberof Builder
      */
     private async construct(submission: IBuildSubmission): Promise<void> {
-        submission.imageName = `${this.opts.registry}/team_${submission.teamId}:${submission.version}`;
+        submission.imageName = `${this.opts.registry.external}/team_${submission.teamId}:${submission.version}`;
         submission.logUrl = `/builder/${basename(this.opts.output)}/team_${submission.teamId}_${submission.version}.log.gz`;
         const buildOutput = await this.docker.buildImage(submission.context, { t: submission.imageName })
             .catch((error) => { throw error; });
