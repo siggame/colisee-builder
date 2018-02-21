@@ -1,7 +1,7 @@
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
 import { BadRequest, NotFound } from "http-errors";
-import { isArrayLike, isNil, isNumber, isString, omit, toNumber } from "lodash";
+import { isArrayLike, isNil, isNumber, omit, toNumber } from "lodash";
 import * as multer from "multer";
 
 import { builder } from "./Builder";
