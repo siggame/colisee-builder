@@ -7,7 +7,7 @@ import * as winston from "winston";
 import * as zlib from "zlib";
 
 import { updateStatus, updateSubmission } from "../db";
-import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_HOST, REGISTRY_PORT } from "../vars";
+import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_HOST_EXTERNAL, REGISTRY_HOST_INTERNAL, REGISTRY_PORT } from "../vars";
 import { BuildQueue } from "./queue";
 import { IBuildSubmission } from "./submission";
 
@@ -15,7 +15,7 @@ interface IBuilderOptions {
     buildInterval: number;
     buildLimit: number;
     output: string;
-    registry: string;
+    registry: { internal: string, external: string };
 }
 
 /**
@@ -32,12 +32,23 @@ class Builder {
     /**
      * Creates an instance of Builder.
      // tslint:disable-next-line:max-line-length
-     * @param {IBuilderOptions} [opts={ buildInterval: BUILD_INTERVAL, queueLimit: BUILD_LIMIT, registry: `${REGISTRY_HOST}:${REGISTRY_PORT}` }] 
+     * @param {IBuilderOptions} [opts={ 
+     * buildInterval: BUILD_INTERVAL, 
+     * queueLimit: BUILD_LIMIT, 
+     * registry: {
+     *     external: `${REGISTRY_HOST_EXTERNAL}:${REGISTRY_PORT}`,
+     *     internal: `${REGISTRY_HOST_INTERNAL}:${REGISTRY_PORT}`,
+     * }}] 
      * @memberof Builder
      */
     constructor(opts: IBuilderOptions = {
-        buildInterval: BUILD_INTERVAL, buildLimit: BUILD_LIMIT,
-        output: OUTPUT_DIR, registry: `${REGISTRY_HOST}:${REGISTRY_PORT}`,
+        buildInterval: BUILD_INTERVAL,
+        buildLimit: BUILD_LIMIT,
+        output: OUTPUT_DIR,
+        registry: {
+            external: `${REGISTRY_HOST_EXTERNAL}:${REGISTRY_PORT}`,
+            internal: `${REGISTRY_HOST_INTERNAL}:${REGISTRY_PORT}`,
+        },
     }) {
         this.docker = new Docker();
         this.opts = opts;
@@ -120,7 +131,7 @@ class Builder {
         winston.info(`successfully built ${submission.imageName}`);
 
         const image = await this.docker.getImage(submission.imageName);
-        const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry }) })
+        const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry.external }) })
             .catch((error) => { throw error; });
         pushOutput.pipe(compressor).pipe(writeBuildOutput);
 
@@ -129,7 +140,7 @@ class Builder {
 
         /* https://docs.docker.com/registry/spec/api/ */
         const images = await request({
-            json: true, url: `http://${this.opts.registry}/v2/team_${submission.teamId}/tags/list`,
+            json: true, url: `http://${this.opts.registry.internal}/v2/team_${submission.teamId}/tags/list`,
         }).catch((error) => { throw error; });
 
         if (images.tags && (<Array<string>>images.tags).indexOf(`${submission.version}`) >= 0) {
