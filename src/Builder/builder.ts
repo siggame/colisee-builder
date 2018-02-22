@@ -84,11 +84,12 @@ class Builder {
                         .slice(0, this.opts.buildLimit - building)
                         .forEach(async ([id]) => {
                             const submission = await this.submissions.build(id);
-                            await this.construct(submission).catch(async (error) => {
-                                submission.status = "failed";
-                                await updateStatus(submission);
-                                winston.error(error);
-                            });
+                            await this.construct(submission)
+                                .catch(async (error) => {
+                                    submission.status = "failed";
+                                    await updateSubmission(submission);
+                                    winston.error(error);
+                                });
                         });
                 }
             }, this.opts.buildInterval);
@@ -117,20 +118,28 @@ class Builder {
      * @memberof Builder
      */
     private async construct(submission: IBuildSubmission): Promise<void> {
-        submission.imageName = `${this.opts.registry.external}/team_${submission.teamId}:${submission.version}`;
+        const imageName = `${this.opts.registry.external}/team_${submission.teamId}:${submission.version}`;
         submission.logUrl = `/builder/${basename(this.opts.output)}/team_${submission.teamId}_${submission.version}.log.gz`;
-        const buildOutput = await this.docker.buildImage(submission.context, { t: submission.imageName })
-            .catch((error) => { throw error; });
         const writeBuildOutput = fs.createWriteStream(`${this.opts.output}/team_${submission.teamId}_${submission.version}.log.gz`);
         const compressor = zlib.createGzip();
+        const buildOutput = await this.docker.buildImage(submission.context, { t: imageName })
+            .catch((error) => {
+                winston.error("build submission to docker failed");
+                if (error) {
+                    compressor.write(JSON.stringify(error));
+                    compressor.pipe(writeBuildOutput);
+                    compressor.end();
+                }
+                throw error;
+            });
         buildOutput.pipe(compressor, { end: false }).pipe(writeBuildOutput);
 
         await new Promise((res, rej) => { buildOutput.on("end", res).on("error", rej); })
-            .catch((error) => { throw error; });
+            .catch((error) => { winston.error("build of image failed"); throw error; });
 
-        winston.info(`successfully built ${submission.imageName}`);
+        winston.info(`successfully built ${imageName}`);
 
-        const image = await this.docker.getImage(submission.imageName);
+        const image = await this.docker.getImage(imageName);
         const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry.external }) })
             .catch((error) => { throw error; });
         pushOutput.pipe(compressor).pipe(writeBuildOutput);
@@ -145,12 +154,13 @@ class Builder {
 
         if (images.tags && (<Array<string>>images.tags).indexOf(`${submission.version}`) >= 0) {
             submission.status = "finished";
+            submission.imageName = imageName;
             await updateSubmission(submission);
             winston.info(`successfully pushed ${submission.imageName}`);
         } else if (images.errors) {
             throw new Error(`${images.errors}`);
         } else {
-            throw new Error(`failed to push image ${submission.imageName}`);
+            throw new Error(`failed to push image ${imageName}`);
         }
     }
 }
