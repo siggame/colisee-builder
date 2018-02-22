@@ -141,11 +141,11 @@ class Builder {
 
         const image = await this.docker.getImage(imageName);
         const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry.external }) })
-            .catch((error) => { throw error; });
+            .catch((error) => { winston.error(`attempt to push ${imageName} failed`); throw error; });
         pushOutput.pipe(compressor).pipe(writeBuildOutput);
 
         await new Promise((res, rej) => { pushOutput.on("end", res).on("error", rej); })
-            .catch((error) => { throw error; });
+            .catch((error) => { winston.error(`pushing ${imageName} failed`); throw error; });
 
         /* https://docs.docker.com/registry/spec/api/ */
         const images = await request({
