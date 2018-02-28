@@ -2,8 +2,8 @@
 
 REST Service that builds client code into Docker Images which are then pushed to a Docker Registry.
 
-[![Travis](https://img.shields.io/travis/siggame/colisee-builder.svg?style=flat-square)](https://travis-ci.org/siggame/colisee-builder) 
-[![David](https://img.shields.io/david/siggame/colisee-builder.svg?style=flat-square)]()
+[![Travis](https://img.shields.io/travis/siggame/colisee-builder.svg?style=flat-square)](https://travis-ci.org/siggame/colisee-builder)
+[![David](https://img.shields.io/david/siggame/colisee-builder.svg?style=flat-square)](\ )
 [![Docker Pulls](https://img.shields.io/docker/pulls/siggame/colisee-builder.svg?style=flat-square)](https://hub.docker.com/r/siggame/colisee-builder/)
 [![GitHub release](https://img.shields.io/github/release/siggame/colisee-builder.svg?style=flat-square)](https://github.com/siggame/colisee-builder/releases)
 
@@ -53,7 +53,7 @@ The following interfaces & types are defined and referenced below in the API end
 ```typescript
 type BuildStatusType = "queued" | "building" | "failed" | "succeeded";
 
-interface BuildStatus {
+interface IBuildSubmission {
     id: string;
     status: BuildStatusType;
     startedTime: DateTime;
@@ -69,84 +69,64 @@ interface HttpError {
 ```
 
 #### API
------------------------------------------
-#### `GET /` Retrieve status of all builds
 
-Retrieve the status of all builds. The following query parameters are acceptable.
+-----------------------------------------
+
+#### `GET /status`
+
+Retrieve the status of all builds. The following filter parameters are acceptable.
 
 ```typescript
-interface QueryParams {
-    // Filter by any of the provided statuses
-    id: string[];
+interface FilterParams {
+    // Filter by any of the provided team ids
+    ids: numbers[];
 }
 ```
 
-**200 - Retrieved build status**
+##### 200 - Retrieved build status
+
+```plain
+IBuildSubmission[];
 ```
-{
-    statuses: BuildStatus[];
-}
-```
-**400 - Bad Request**
-```
+
+##### 400 - Bad Request
+
+```plain
 HttpError
 ```
 
 -----------------------------------------
-#### `GET /{id}` Retrieve status of a build
 
-Retrieve the status of a build.
-
-**200 - Retrieved build status**
-```
-BuildStatus;
-```
-**400 - Bad Request; 404 - Not Found**
-```
-HttpError
-```
-
------------------------------------------
-#### `GET /{id}/log` Retrieve log of a build
-
-Retrieve a log of the build. The built must have status `failed` or `succeeded`. Otherwise, endpoint will return a 403 - Forbidden.
-
-**200 - Retrieved log**
-```
-text/plain
-```
-
-**404 - Not Found; 400 - Bad Request; 403 - Forbidden**
-```
-HttpError;
-```
-
------------------------------------------
-#### `GET /{id}/image` Retrieve built docker image of a build
+#### `GET /status/:team_id`
 
 Retrieve the built version of the code as a saved docker image. The built must have status `succeeded`. Otherwise, endpoint will return a 403 - Forbidden.
 
-**200 - Retrieved log**
-```
-application/zip
+##### 200 - Retrieved log
+
+```plain
+IBuildSubmission;
 ```
 
-**404 - Not Found; 400 - Bad Request; 403 - Forbidden**
-```
+##### 404 - Not Found; 400 - Bad Request
+
+```plain
 HttpError;
 ```
 
 -----------------------------------------
-#### `POST /` Queue new build
 
-Push a new build into the queue. The **body** of the request must contain the **ZIP file** of course that is to be built.
+#### `POST /submit/:team_id`
 
-**201 - Queued build**
+Push a new build into a team's build queue. The **body** of the request must contain the **[.tar, .tgz, .zip] file** that is to be built. The **body** should contain a field named **submission** that is the archive.
+
+##### 200 - Enqueued Build
+
+```plain
 ```
-BuildStatus;
-```
-**400 - Bad Request; 409 - Conflict**
-```
+
+##### 400 - Bad Request
+
+```plain
 HttpError;
 ```
 
@@ -163,7 +143,7 @@ View our [CHANGELOG.md](https://github.com/siggame/colisee-builder/blob/master/C
 
 ## License
 
-View our [LICENSE.md](https://github.com/siggame/colisee/blob/master/LICENSE.md)
+View our [LICENSE](https://github.com/siggame/colisee/blob/master/LICENSE)
 
 ## Contributing
 

@@ -8,7 +8,7 @@
 [<release_header>]: # (## [${version}] - ${year}-${month}-${day})
 [<release_description>]: # (### Added${sep}-${sep}### Changed${sep}-${sep}### Removed${sep}-${sep}### Fixed${sep}-)
 [<release_ref>]: # ([${version}]: ${compare})
-[<current>]: # (v1.0.0)
+[<current>]: # (v1.1.0)
 [//]: # (<end>)
 
 All notable changes to [siggame/colisee-builder] will be documented in this file.
@@ -21,15 +21,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
  
 
-[Unreleased]: https://github.com/siggame/colisee-builder/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/siggame/colisee-builder/compare/v1.1.0...HEAD
 [//]: # (<end>)
 
 [//]: # (<release>)
+## [v1.1.0] - 2018-2-28
+
+### Changed
+
+- Better api support for status endpoints
+- Updated README for recent version of api
+
+### Fixed
+
+- Issue with writing to build log siggame/colisee#17
+
+[v1.1.0]: https://github.com/siggame/colisee-builder/compare/v1.0.0...v1.1.0
+[//]: # (<end>)
 ## [v1.0.0] - 2018-2-25
 
-* Update service version for running Colisee in CS5400 for Chess
+- Update service version for running Colisee in CS5400 for Chess
 
 [v1.0.0]: https://github.com/siggame/colisee-builder/compare/v0.0.0...v1.0.0
-[//]: # (<end>)
 
 [siggame/colisee-builder]: (https://github.com/siggame/colisee-builder)
