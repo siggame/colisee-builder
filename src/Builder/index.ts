@@ -1,3 +1,3 @@
 export * from "./builder";
-export * from "./queue";
+export * from "./handlers";
 export * from "./submission";
