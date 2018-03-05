@@ -7,7 +7,7 @@ import * as zlib from "zlib";
 
 import { updateStatus, updateSubmission } from "../db";
 import { Registry } from "../Registry";
-import { BUILD_INTERVAL, BUILD_LIMIT, OUTPUT_DIR, REGISTRY_HOST_EXTERNAL, REGISTRY_HOST_INTERNAL, REGISTRY_PORT } from "../vars";
+import { BUILD_INTERVAL, BUILD_LIMIT, DOCKER_HOST, DOCKER_PORT, OUTPUT_DIR, REGISTRY_HOST, REGISTRY_PORT } from "../vars";
 import { BuildQueue } from "./queue";
 import { IBuildSubmission } from "./submission";
 
@@ -16,7 +16,7 @@ interface IBuilderOptions {
     buildLimit: number;
     docker_options?: Docker.DockerOptions;
     output: string;
-    registry: { internal: string, external: string };
+    registry: string;
 }
 
 /**
@@ -29,35 +29,19 @@ class Builder extends Docker {
     private opts: IBuilderOptions;
     private registry: Registry;
     private runTimer?: NodeJS.Timer;
-
     /**
      * Creates an instance of Builder.
-     // tslint:disable-next-line:max-line-length
-     * @param {IBuilderOptions} [opts={ 
-     * buildInterval: BUILD_INTERVAL, 
-     * queueLimit: BUILD_LIMIT, 
-     * registry: {
-     *     external: `${REGISTRY_HOST_EXTERNAL}:${REGISTRY_PORT}`,
-     *     internal: `${REGISTRY_HOST_INTERNAL}:${REGISTRY_PORT}`,
-     * }}] 
+     * @param {IBuilderOptions} opts 
      * @memberof Builder
      */
-    constructor(opts: IBuilderOptions = {
-        buildInterval: BUILD_INTERVAL,
-        buildLimit: BUILD_LIMIT,
-        output: OUTPUT_DIR,
-        registry: {
-            external: `${REGISTRY_HOST_EXTERNAL}:${REGISTRY_PORT}`,
-            internal: `${REGISTRY_HOST_INTERNAL}:${REGISTRY_PORT}`,
-        },
-    }) {
+    constructor(opts: IBuilderOptions) {
         if (opts.docker_options) {
             super(opts.docker_options);
         } else {
             super();
         }
         this.opts = opts;
-        this.registry = new Registry(`${this.opts.registry.internal}`);
+        this.registry = new Registry(`${this.opts.registry}`);
         this.submissions = new BuildQueue();
     }
 
@@ -132,7 +116,7 @@ class Builder extends Docker {
      * @memberof Builder
      */
     private async construct(submission: IBuildSubmission, output: PassThrough): Promise<void> {
-        const imageName = `${this.opts.registry.external}/team_${submission.teamId}:${submission.version}`;
+        const imageName = `${this.opts.registry}/team_${submission.teamId}:${submission.version}`;
         submission.logUrl = `/builder/${basename(this.opts.output)}/team_${submission.teamId}_${submission.version}.log.gz`;
         const buildOutput = await this.buildImage(submission.context, { t: imageName })
             .catch((error) => {
@@ -147,7 +131,7 @@ class Builder extends Docker {
         winston.info(`successfully built ${imageName}`);
 
         const image = await this.getImage(imageName);
-        const pushOutput = await image.push({ "X-Registry-Auth": JSON.stringify({ serveraddress: this.opts.registry.external }) })
+        const pushOutput = await image.push(this.registry.auth)
             .catch((error) => {
                 winston.error(`attempt to push ${imageName} failed`);
                 throw error;
@@ -177,4 +161,13 @@ class Builder extends Docker {
     }
 }
 
-export const builder = new Builder();
+export const builder = new Builder({
+    buildInterval: BUILD_INTERVAL,
+    buildLimit: BUILD_LIMIT,
+    docker_options: DOCKER_PORT > 443 ? {
+        host: DOCKER_HOST,
+        port: DOCKER_PORT,
+    } : { socketPath: "/var/run/docker.sock" },
+    output: OUTPUT_DIR,
+    registry: `${REGISTRY_HOST}:${REGISTRY_PORT}`,
+});
