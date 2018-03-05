@@ -19,12 +19,15 @@ RUN npm run build:dist && pkg -t ${NODE}-${PLATFORM}-${ARCH} --output builder re
 
 FROM alpine:latest
 
-RUN mkdir -p /app/output
-WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apk update && apk add --no-cache libstdc++ libgcc
+RUN addgroup -S siggame && adduser -S -G siggame siggame \
+    && apk update && apk add --no-cache libstdc++ libgcc \
+    && mkdir -p /app/output && chown -R siggame:siggame /app
 
-COPY --from=build /usr/src/app/builder /app/builder
+COPY --from=build --chown=siggame:siggame /usr/src/app/builder /app/builder
+
+USER siggame
+WORKDIR /app
 
 CMD ["/app/builder"]
