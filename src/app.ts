@@ -30,7 +30,7 @@ const logger: RequestHandler = (req, res, next) => {
 // Error Middleware
 const errorHandler: ErrorRequestHandler = (err: HttpError, req, res, next) => {
     if (err.stack) { winston.error(err.stack); }
-    res.status(err.statusCode).end(err.name);
+    res.status(err.statusCode).end(err.message);
 };
 
 app.use(cors());
