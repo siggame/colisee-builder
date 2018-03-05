@@ -24,9 +24,15 @@ REST Service that builds client code into Docker Images which are then pushed to
 
 ## Description
 
-The purpose of this application is to provide a service to the ACM SIG-Game Web team to build competitor code. A competitor will log into the Web team's general user interface and upload a new zip file to submit to the tournament. The Web team will request this service to add this zip file to the queue. The builder will give back a unique ID of the build and the web team will occasionally ping the service to check if the build has finished. When the build has finished, the Web team will retrieve the gamelog as well as the built Docker Image from the service in a reasonable amount of time[1].
+The purpose of this application is to provide a service to the ACM SIG-Game Web team to build competitor code.
+A competitor will log into the Web team's general user interface and upload a new zip file to submit to the
+tournament. The Web team will request this service to add this zip file to the queue. The builder will give
+back a unique ID of the build and the web team will occasionally ping the service to check if the build has
+finished. When the build has finished, the Web team will retrieve the build output.
 
-> [1] Given that the competition is 24 hours, and that a competitor will expect the build to be running in a live environment ASAP, we can assume a reasonable amount time is defined as 5 minutes. At any point in time beyond 5 minutes, the builder service cannot guarantee that the requested data was preserved. Ideally the Web Server will retrieve the data within **5 seconds** of the build being completed.
+The builder is designed to connect to an image build system and image repository. The image build system which
+the builder relies on currently is Docker. The image repository needs to be compatible with the Docker daemon
+and also should support queries to verify that the image was successfully pushed to that repository.
 
 ## Getting Started
 
@@ -119,9 +125,22 @@ HttpError;
 
 Push a new build into a team's build queue. The **body** of the request must contain the **[.tar, .tgz, .zip] file** that is to be built. The **body** should contain a field named **submission** that is the archive.
 
-##### 200 - Enqueued Build
+##### Body
 
 ```plain
+multipart/form-data
+
+submission: File
+```
+
+##### 201 - Enqueued Build
+
+```json
+{
+    submission: {
+        id: number;
+    }
+}
 ```
 
 ##### 400 - Bad Request
@@ -134,7 +153,6 @@ HttpError;
 
 - [Russley Shaw](https://github.com/russleyshaw)
 - [user404d](https://github.com/user404d)
-- [Hannah Reinbolt](https://github.com/LoneGalaxy)
 - [Matthew Qualls](https://github.com/MatthewQualls)
 
 ## Change Log

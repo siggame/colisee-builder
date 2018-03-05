@@ -50,7 +50,7 @@ async function assertTeamIdParamValid(req: Request) {
             throw new BadRequest("Team ID must be a number");
         } else {
             if (!(await teamExists(team_id))) {
-                throw new BadRequest(`No team exists with the id ${req.params.team_id}`);
+                throw new BadRequest(`No team exists with the id ${team_id}`);
             }
         }
     }
@@ -98,7 +98,11 @@ export const enqueue: RequestHandler[] = [
             context: ReadableContext(req.file.buffer),
             ...newSubmission,
         });
-        res.end("enqueued build");
+        res.status(201).json({
+            submission: {
+                id: newSubmission.id,
+            },
+        });
     }),
 ];
 
