@@ -3,9 +3,10 @@
 REST Service that builds client code into Docker Images which are then pushed to a Docker Registry.
 
 [![Travis](https://img.shields.io/travis/siggame/colisee-builder.svg?style=flat-square)](https://travis-ci.org/siggame/colisee-builder)
-[![David](https://img.shields.io/david/siggame/colisee-builder.svg?style=flat-square)](\ )
-[![Docker Pulls](https://img.shields.io/docker/pulls/siggame/colisee-builder.svg?style=flat-square)](https://hub.docker.com/r/siggame/colisee-builder/)
-[![GitHub release](https://img.shields.io/github/release/siggame/colisee-builder.svg?style=flat-square)](https://github.com/siggame/colisee-builder/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/siggame/colisee-builder.svg?style=flat-square)](https://hub.docker.com/r/siggame/colisee-builder)
+[![GitHub tag](https://img.shields.io/github/tag/siggame/colisee-builder.svg?style=flat-square)](https://github.com/siggame/colisee-builder/tags)
+[![dependencies Status](https://david-dm.org/siggame/colisee-builder/status.svg)](https://david-dm.org/siggame/colisee-builder)
+[![devDependencies Status](https://david-dm.org/siggame/colisee-builder/dev-status.svg)](https://david-dm.org/siggame/colisee-builder?type=dev)
 
 ## Table Of Contents
 
