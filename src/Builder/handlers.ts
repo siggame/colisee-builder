@@ -1,3 +1,4 @@
+import { db } from "@siggame/colisee-lib";
 import * as body_parser from "body-parser";
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
@@ -5,10 +6,10 @@ import { BadRequest, NotFound } from "http-errors";
 import { isArrayLike, isNil, isNumber, omit, toNumber } from "lodash";
 import * as multer from "multer";
 
-import { createSubmission, teamExists } from "../db";
-import { catchError } from "../helpers";
+import { createNewSubmission, teamExists } from "../db";
+import { catchError, retry } from "../helpers";
 import { builder } from "./builder";
-import { ReadableContext } from "./context";
+import { prepare_context, readable_context } from "./context";
 
 const upload = multer();
 
@@ -19,6 +20,22 @@ function assertFileType(req: Request) {
     const { ext } = fileType(req.file.buffer);
     if (ext !== "tar" && ext !== "zip" && ext !== "gz") {
         throw new BadRequest(`${ext} is not a supported file type`);
+    }
+}
+
+function assertLangParamValid(req: Request) {
+    if (isNil(req.params.lang)) {
+        throw new BadRequest("Language must be specified");
+    }
+    switch (req.params.lang) {
+        case "cpp":
+        case "cs":
+        case "java":
+        case "js":
+        case "py":
+            return;
+        default:
+            throw new BadRequest(`${req.params.lang} is not a valid language choice`);
     }
 }
 
@@ -86,21 +103,22 @@ export const enqueue: RequestHandler[] = [
     upload.single("submission"),
     catchError<RequestHandler>(async (req, res, next) => {
         assertFileType(req);
-        await assertTeamIdParamValid(req)
-            .catch((error) => { throw error; });
+        assertLangParamValid(req);
+        await assertTeamIdParamValid(req);
         const team_id = toNumber(req.params.team_id);
-        const [newSubmission] = await createSubmission(team_id)
-            .catch((error) => { throw error; });
+        const new_submission = await retry(() => createNewSubmission(team_id));
+
         if (req.file.size === 0) {
             throw new BadRequest("empty archive");
         }
+        const context = await readable_context(req.file.buffer);
         builder.submissions.enqueue(team_id, {
-            context: ReadableContext(req.file.buffer),
-            ...newSubmission,
+            context: await prepare_context(req.params.lang, context),
+            ...new_submission,
         });
         res.status(201).json({
             submission: {
-                id: newSubmission.id,
+                id: new_submission.id,
             },
         });
     }),

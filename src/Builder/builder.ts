@@ -79,14 +79,15 @@ class Builder extends Docker {
                             const compressor = new PassThrough();
                             const log = fs.createWriteStream(`${this.opts.output}/team_${submission.teamId}_${submission.version}.log.gz`);
                             compressor.pipe(zlib.createGzip()).pipe(log);
-                            await this.construct(submission, compressor)
-                                .catch((error) => {
-                                    submission.status = "failed";
-                                    updateSubmission(submission);
-                                    winston.error(error);
-                                    compressor.write(JSON.stringify(error));
-                                    compressor.end();
-                                });
+                            try {
+                                await this.construct(submission, compressor);
+                            } catch (error) {
+                                submission.status = "failed";
+                                updateSubmission(submission);
+                                winston.error(error);
+                                compressor.write(JSON.stringify(error));
+                                compressor.end();
+                            }
                         });
 
                 }
@@ -118,31 +119,25 @@ class Builder extends Docker {
     private async construct(submission: IBuildSubmission, output: PassThrough): Promise<void> {
         const imageName = `${this.opts.registry}/team_${submission.teamId}:${submission.version}`;
         submission.logUrl = `/builder/${basename(this.opts.output)}/team_${submission.teamId}_${submission.version}.log.gz`;
-        const buildOutput = await this.buildImage(submission.context, { t: imageName })
-            .catch((error) => {
-                winston.error("build submission to docker failed");
-                throw error;
-            });
-        buildOutput.pipe(output, { end: false });
-
-        await new Promise((res, rej) => { buildOutput.on("end", res).on("error", rej); })
-            .catch((error) => { winston.error("build of image failed"); throw error; });
-
+        try {
+            // TODO: investigate limits on build containers
+            const buildOutput = await this.buildImage(submission.context, { t: imageName });
+            buildOutput.pipe(output, { end: false });
+            await new Promise((res, rej) => { buildOutput.on("end", res).on("error", rej); });
+        } catch (error) {
+            winston.error(`build for submission ${imageName} failed`);
+            throw error;
+        }
         winston.info(`successfully built ${imageName}`);
-
-        const image = await this.getImage(imageName);
-        const pushOutput = await image.push(this.registry.auth)
-            .catch((error) => {
-                winston.error(`attempt to push ${imageName} failed`);
-                throw error;
-            });
-        pushOutput.pipe(output, { end: false });
-
-        await new Promise((res, rej) => { pushOutput.on("end", res).on("error", rej); })
-            .catch((error) => {
-                winston.error(`pushing ${imageName} failed`);
-                throw error;
-            });
+        try {
+            const image = await this.getImage(imageName);
+            const pushOutput = await image.push(this.registry.auth);
+            pushOutput.pipe(output, { end: false });
+            await new Promise((res, rej) => { pushOutput.on("end", res).on("error", rej); });
+        } catch (error) {
+            winston.error(`pushing ${imageName} failed`);
+            throw error;
+        }
 
         const images = await this.registry.getTeamTags(submission.teamId);
 
@@ -153,9 +148,12 @@ class Builder extends Docker {
             winston.info(`successfully pushed ${submission.imageName}`);
             output.write(`successfully pushed ${submission.imageName}`);
             output.end();
+            this.getImage(imageName).remove();
         } else if (images.errors) {
+            this.getImage(imageName).remove();
             throw new Error(`${images.errors}`);
         } else {
+            this.getImage(imageName).remove();
             throw new Error(`failed to push image ${imageName}`);
         }
     }

@@ -41,7 +41,7 @@ app.get("/start", start);
 app.get("/status/", ...statuses);
 app.get("/status/:team_id", ...status);
 app.get("/stop", stop);
-app.post("/submit/:team_id", ...enqueue);
+app.post("/submit/:lang/:team_id", ...enqueue);
 
 export default () => {
     if (!fs.existsSync(OUTPUT_DIR)) {

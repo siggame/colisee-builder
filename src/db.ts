@@ -1,65 +1,62 @@
 import { db } from "@siggame/colisee-lib";
-import { isNil } from "lodash";
+import { Transaction } from "knex";
+import * as winston from "winston";
 
-import { IBuildSubmission } from "./Builder";
-
-function getRecentSubmission(team_id: number) {
-    return new Promise<number>((res, rej) => {
-        db.connection("submissions")
-            .where({ team_id })
-            .max("version")
-            .then(([{ max }]: { max: number }[]) => { res(max); })
-            .catch(rej);
-    }).catch((error) => { throw error; });
+async function get_recent_submission_version(trx: Transaction, team_id: number) {
+    const [max]: { version: number }[] = await db.connection("submissions")
+        .transacting(trx)
+        .where({ team_id })
+        .select(db.connection.raw("max(version) as version"));
+    return max ? max.version : -1;
 }
 
-function createNewSubmission(team_id: number, version: number) {
-    return new Promise<db.Submission[]>((res, rej) => {
-        db.connection("submissions")
-            .insert({ image_name: "not_pushed", status: "queued", team_id, version }, "*")
-            .then(db.rowsToSubmissions)
-            .then(res)
-            .catch(rej);
-    }).catch((error) => { throw error; });
+export async function createNewSubmission(team_id: number): Promise<db.Submission> {
+    return db.connection.transaction(async (trx): Promise<db.Submission> => {
+        try {
+            const last_version = await get_recent_submission_version(trx, team_id);
+            const [submission] = await db.connection("submissions")
+                .transacting(trx)
+                .insert({ image_name: "not_pushed", status: "queued", team_id, version: last_version + 1 }, "*")
+                .then(db.rowsToSubmissions);
+            return submission;
+        } catch (error) {
+            winston.error("unable to create new submission");
+            throw error;
+        }
+    });
 }
 
-/**
- * Creates a new submission and increments the version number.
- * 
- * @export
- */
-export async function createSubmission(team_id: number): Promise<db.Submission[]> {
-    const recent_version = await getRecentSubmission(team_id);
-    const new_version = isNil(recent_version) ? 0 : recent_version + 1;
-    return await createNewSubmission(team_id, new_version);
-}
-
-export function updateSubmission({ context, id, ...rest }: IBuildSubmission) {
-    return new Promise((res, rej) => {
-        db.connection("submissions")
+export async function updateSubmission({ id, ...rest }: db.Submission) {
+    try {
+        return await db.connection("submissions")
             .update({ image_name: rest.imageName, log_url: rest.logUrl, status: rest.status })
             .where({ id })
-            .then((_) => { res(); })
-            .catch(rej);
-    }).catch((error) => { throw error; });
+            .thenReturn();
+    } catch (error) {
+        throw error;
+    }
 }
 
-export function updateStatus({ id, status }: IBuildSubmission) {
-    return new Promise((res, rej) => {
-        db.connection("submissions")
+export async function updateStatus({ id, status }: db.Submission) {
+    try {
+        return await db.connection("submissions")
             .update({ status })
             .where({ id })
-            .then((_) => { res(); })
-            .catch(rej);
-    }).catch((error) => { throw error; });
+            .thenReturn();
+    } catch (error) {
+        winston.error(`failed to update submission ${id}`);
+        throw error;
+    }
 }
 
-export function teamExists(team_id: number): Promise<boolean> {
-    return new Promise<boolean>((res, rej) => {
-        db.connection("teams")
+export async function teamExists(team_id: number) {
+    try {
+        return await db.connection("teams")
             .count("*")
             .where({ id: team_id })
-            .then(([{ count }]: { count: number }[]) => { res(count > 0); })
-            .catch(rej);
-    }).catch((error) => { throw error; });
+            .then(([{ count }]: { count: number }[]) => count > 0);
+    } catch (error) {
+        winston.error(`failed to see if team ${team_id} exists`);
+        throw error;
+    }
 }
