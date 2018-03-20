@@ -1,171 +1,90 @@
+import "core-js/modules/es7.symbol.async-iterator";
+
+import { db } from "@siggame/colisee-lib";
 import * as Docker from "dockerode";
-import * as fs from "fs";
 import { basename } from "path";
-import { PassThrough } from "stream";
+import { Readable } from "stream";
 import * as winston from "winston";
-import * as zlib from "zlib";
 
 import { updateStatus, updateSubmission } from "../db";
 import { Registry } from "../Registry";
-import { BUILD_INTERVAL, BUILD_LIMIT, DOCKER_HOST, DOCKER_PORT, OUTPUT_DIR, REGISTRY_HOST, REGISTRY_PORT } from "../vars";
+import { BUILD_LIMIT, DOCKER_HOST, DOCKER_PORT, OUTPUT_DIR, REGISTRY_HOST, REGISTRY_PORT } from "../vars";
 import { BuildQueue } from "./queue";
-import { IBuildSubmission } from "./submission";
+import { IBuildSubmission, SubmissionImage } from "./submission";
 
-interface IBuilderOptions {
-    buildInterval: number;
-    buildLimit: number;
-    docker_options?: Docker.DockerOptions;
-    output: string;
-    registry: string;
-}
+class Builder {
 
-/**
- * Queues build submissions and builds them.
- * 
- * @class Builder
- */
-class Builder extends Docker {
-    public submissions: BuildQueue;
-    private opts: IBuilderOptions;
+    private docker_options: Docker.DockerOptions;
+    private pulling: boolean;
+    private queue: BuildQueue;
     private registry: Registry;
-    private runTimer?: NodeJS.Timer;
-    /**
-     * Creates an instance of Builder.
-     * @param {IBuilderOptions} opts 
-     * @memberof Builder
-     */
-    constructor(opts: IBuilderOptions) {
-        if (opts.docker_options) {
-            super(opts.docker_options);
-        } else {
-            super();
-        }
-        this.opts = opts;
-        this.registry = new Registry(`${this.opts.registry}`);
-        this.submissions = new BuildQueue();
+    private stream?: Promise<void>;
+
+    constructor() {
+        this.docker_options = DOCKER_HOST !== "" ? { host: DOCKER_HOST, port: DOCKER_PORT } : {};
+        this.pulling = false;
+        this.queue = new BuildQueue(BUILD_LIMIT);
+        this.registry = new Registry(REGISTRY_HOST, REGISTRY_PORT);
     }
 
-    /**
-     * Initiate processing of queued build submissions. Limits
-     * building submissions by `opts.queueLimit`. Updates every
-     * `opts.buildInterval`.
-     * 
-     * @memberof Builder
-     */
+    public enqueue(meta_data: db.Submission, context: Readable) {
+        meta_data.imageName = `${this.registry.url}/team_${meta_data.teamId}:${meta_data.version}`;
+        const filename = `team_${meta_data.teamId}_${meta_data.version}.log.gz`;
+        meta_data.logUrl = `/builder/${basename(OUTPUT_DIR)}/${filename}`;
+        this.queue.push_back({
+            image: new SubmissionImage(meta_data, context, this.docker_options, `${OUTPUT_DIR}/${filename}`),
+            meta_data,
+        });
+    }
+
     public start() {
-        if (this.runTimer == null) {
-            this.runTimer = setInterval(() => {
-                // let queue make progress
-                this.submissions.forEach((queue) => {
-                    if (!queue.empty() && (queue.front().status === "finished" || queue.front().status === "failed")) {
-                        queue.pop_front();
-                    }
-                });
-                // count currently building submissions
-                const building = Array.from(this.submissions.values())
-                    .reduce((count, queue) =>
-                        (!queue.empty() && queue.front().status === "building") ? count + 1 : count,
-                        0);
-                // invoke build on queued builds if below bulid limit
-                if (building < this.opts.buildLimit) {
-                    Array.from(this.submissions.entries())
-                        .filter(([, queue]) => !queue.empty() && queue.front().status === "queued")
-                        .sort(([, queue_a], [, queue_b]) => queue_a.front().createdAt.getTime() - queue_b.front().createdAt.getTime())
-                        .slice(0, this.opts.buildLimit - building)
-                        .forEach(async ([, queue]) => {
-                            const submission = queue.front();
-                            submission.status = "building";
-                            await updateStatus(submission);
-                            const compressor = new PassThrough();
-                            const log = fs.createWriteStream(`${this.opts.output}/team_${submission.teamId}_${submission.version}.log.gz`);
-                            compressor.pipe(zlib.createGzip()).pipe(log);
-                            try {
-                                await this.construct(submission, compressor);
-                            } catch (error) {
-                                submission.status = "failed";
-                                updateSubmission(submission);
-                                winston.error(error);
-                                compressor.write(JSON.stringify(error));
-                                compressor.end();
-                            }
-                        });
+        if (this.stream == null) {
+            this.stream = this.pull();
+            this.pulling = true;
+        }
+    }
 
+    public async stop() {
+        if (this.stream && this.pulling) {
+            this.pulling = false;
+            await this.stream;
+            this.stream = undefined;
+        }
+    }
+
+    private async pull() {
+        for await (const submission of this.queue.stream()) {
+            // construction executes asynchronously, so it has to release when finished
+            this.queue.hold();
+            winston.info(`building submission ${submission.meta_data.id} for team ${submission.meta_data.teamId}`);
+            (async () => {
+                try {
+                    await this.construct(submission);
+                } finally {
+                    this.queue.release();
                 }
-            }, this.opts.buildInterval);
+            })();
+            if (!this.pulling) { break; }
         }
+        winston.info("stopped pulling enqueued builds");
     }
 
-    /**
-     * Stop the builder from building new submissions.
-     * 
-     * @memberof Builder
-     */
-    public stop() {
-        if (this.runTimer) {
-            clearInterval(this.runTimer);
-            this.runTimer = undefined;
-        }
-    }
-
-    /**
-     * Builds a submission if it exists. Sends submission context to
-     * docker engine to be built and once the build succeeds the image
-     * is pushed to a registry at `opts.registry`.
-     * 
-     * @private
-     * @param id Team id for the build.
-     * @memberof Builder
-     */
-    private async construct(submission: IBuildSubmission, output: PassThrough): Promise<void> {
-        const imageName = `${this.opts.registry}/team_${submission.teamId}:${submission.version}`;
-        submission.logUrl = `/builder/${basename(this.opts.output)}/team_${submission.teamId}_${submission.version}.log.gz`;
+    private async construct({ image, meta_data }: IBuildSubmission): Promise<void> {
         try {
-            // TODO: investigate limits on build containers
-            const buildOutput = await this.buildImage(submission.context, { t: imageName });
-            buildOutput.pipe(output, { end: false });
-            await new Promise((res, rej) => { buildOutput.on("end", res).on("error", rej); });
+            meta_data.status = "building";
+            await updateStatus(meta_data);
+            await image.build();
+            await image.push(this.registry.auth);
+            await image.verify(this.registry, meta_data);
+            image.end_log();
+            meta_data.status = "finished";
+            await updateSubmission(meta_data);
         } catch (error) {
-            winston.error(`build for submission ${imageName} failed`);
-            throw error;
-        }
-        winston.info(`successfully built ${imageName}`);
-        try {
-            const image = await this.getImage(imageName);
-            const pushOutput = await image.push(this.registry.auth);
-            pushOutput.pipe(output, { end: false });
-            await new Promise((res, rej) => { pushOutput.on("end", res).on("error", rej); });
-        } catch (error) {
-            winston.error(`pushing ${imageName} failed`);
-            throw error;
-        }
-
-        const images = await this.registry.getTeamTags(submission.teamId);
-
-        if (images.tags && images.tags.some((tag) => tag === `${submission.version}`)) {
-            submission.status = "finished";
-            submission.imageName = imageName;
-            await updateSubmission(submission);
-            winston.info(`successfully pushed ${submission.imageName}`);
-            output.write(`successfully pushed ${submission.imageName}`);
-            output.end();
-            this.getImage(imageName).remove();
-        } else if (images.errors) {
-            this.getImage(imageName).remove();
-            throw new Error(`${images.errors}`);
-        } else {
-            this.getImage(imageName).remove();
-            throw new Error(`failed to push image ${imageName}`);
+            winston.error(`failed to construct submission ${meta_data.id}`);
+            meta_data.status = "failed";
+            await updateSubmission(meta_data);
         }
     }
 }
 
-export const builder = new Builder({
-    buildInterval: BUILD_INTERVAL,
-    buildLimit: BUILD_LIMIT,
-    docker_options: DOCKER_PORT > 443 ? {
-        host: DOCKER_HOST,
-        port: DOCKER_PORT,
-    } : { socketPath: "/var/run/docker.sock" },
-    output: OUTPUT_DIR,
-    registry: `${REGISTRY_HOST}:${REGISTRY_PORT}`,
-});
+export const builder = new Builder();

@@ -1,13 +1,11 @@
-import { db } from "@siggame/colisee-lib";
-import * as body_parser from "body-parser";
 import { Request, RequestHandler } from "express";
 import * as fileType from "file-type";
-import { BadRequest, NotFound } from "http-errors";
-import { isArrayLike, isNil, isNumber, omit, toNumber } from "lodash";
+import { BadRequest } from "http-errors";
+import { isArrayLike, isNil, isNumber, toNumber } from "lodash";
 import * as multer from "multer";
 
 import { createNewSubmission, teamExists } from "../db";
-import { catchError, retry } from "../helpers";
+import { retry } from "../helpers";
 import { builder } from "./builder";
 import { prepare_context, readable_context } from "./context";
 
@@ -18,8 +16,13 @@ function assertFileType(req: Request) {
         throw new BadRequest("File must be uploaded");
     }
     const { ext } = fileType(req.file.buffer);
-    if (ext !== "tar" && ext !== "zip" && ext !== "gz") {
-        throw new BadRequest(`${ext} is not a supported file type`);
+    switch (ext) {
+        case "gz":
+        case "tar":
+        case "zip":
+            return;
+        default:
+            throw new BadRequest(`${ext} is not a supported file type`);
     }
 }
 
@@ -73,55 +76,31 @@ async function assertTeamIdParamValid(req: Request) {
     }
 }
 
-export const statuses: RequestHandler[] = [
-    body_parser.json(),
-    catchError<RequestHandler>(async (req, res, next) => {
-        assertIdsQueryParam(req);
-        const submitted = Array.from(builder.submissions.entries())
-            .filter(([id]) => req.body.ids.indexOf(id) >= 0)
-            .map(([id, queue]) => queue.empty() ? [id, {}] : [id, omit(queue.front(), ["context"])]);
-        res.json(submitted);
-        res.end();
-    }),
-];
-
-export const status: RequestHandler[] = [
-    catchError<RequestHandler>(async (req, res, next) => {
-        assertIdPathParam(req);
-        const team_id = toNumber(req.params.team_id);
-        const queue = builder.submissions.get(toNumber(team_id));
-        if (queue && queue.size() > 0) {
-            res.json(omit(queue.front(), ["context"]));
-            res.end();
-        } else {
-            throw new NotFound(`No submission found for id ${team_id}`);
-        }
-    }),
-];
-
 export const enqueue: RequestHandler[] = [
     upload.single("submission"),
-    catchError<RequestHandler>(async (req, res, next) => {
-        assertFileType(req);
-        assertLangParamValid(req);
-        await assertTeamIdParamValid(req);
-        const team_id = toNumber(req.params.team_id);
-        const new_submission = await retry(() => createNewSubmission(team_id));
+    async (req, res, next) => {
+        try {
+            assertFileType(req);
+            assertLangParamValid(req);
+            await assertTeamIdParamValid(req);
+            const team_id = toNumber(req.params.team_id);
+            const new_submission = await retry(() => createNewSubmission(team_id));
 
-        if (req.file.size === 0) {
-            throw new BadRequest("empty archive");
+            if (req.file.size === 0) {
+                throw new BadRequest("empty archive");
+            }
+
+            const context = await readable_context(req.file.buffer);
+            builder.enqueue(new_submission, await prepare_context(req.params.lang, context));
+            res.status(201).json({
+                submission: {
+                    id: new_submission.id,
+                },
+            });
+        } catch (error) {
+            next(error);
         }
-        const context = await readable_context(req.file.buffer);
-        builder.submissions.enqueue(team_id, {
-            context: await prepare_context(req.params.lang, context),
-            ...new_submission,
-        });
-        res.status(201).json({
-            submission: {
-                id: new_submission.id,
-            },
-        });
-    }),
+    },
 ];
 
 export const start: RequestHandler = (req, res) => {
