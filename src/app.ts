@@ -8,7 +8,7 @@ import * as fs from "fs";
 import { HttpError } from "http-errors";
 import * as winston from "winston";
 
-import { builder, enqueue, start, status, statuses, stop } from "./Builder";
+import { builder, enqueue, start, stop } from "./Builder";
 import { OUTPUT_DIR, PORT } from "./vars";
 
 winston.configure({
@@ -38,10 +38,8 @@ app.use(logger);
 app.use(errorHandler);
 
 app.get("/start", start);
-app.get("/status/", ...statuses);
-app.get("/status/:team_id", ...status);
 app.get("/stop", stop);
-app.post("/submit/:team_id", ...enqueue);
+app.post("/submit/:lang/:team_id", ...enqueue);
 
 export default () => {
     if (!fs.existsSync(OUTPUT_DIR)) {

@@ -51,6 +51,21 @@ npm run setup && npm run start:prod
 
 ## Usage
 
+### Environment File
+
+#### Variables
+
+- `BUILD_INTERVAL`: interval at which builds are processed
+- `BUILD_LIMIT`: limit on number of concurrent builds
+- `DOCKER_HOST`: hostname where docker is running
+- `DOCKER_PORT`: port where docker host is listening for connections
+- `JOUEUR_DOCKERFILES`: location of dockerfiles to be injected
+  - `${JOUEUR_DOCKERFILES}/:lang/Dockerfile` for each `:lang` supported
+- `OUTPUT_DIR`: location where output is written
+- `PORT`: port where the builder is listening
+- `REGISTRY_HOST`: hostname where registry is running
+- `REGISTRY_PORT`: port where registry is listening for connections
+
 ### REST API
 
 #### Interfaces
