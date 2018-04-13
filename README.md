@@ -137,9 +137,16 @@ HttpError;
 
 -----------------------------------------
 
-#### `POST /submit/:team_id`
+#### `POST /submit/:lang/:team_id`
 
 Push a new build into a team's build queue. The **body** of the request must contain the **[.tar, .tgz, .zip] file** that is to be built. The **body** should contain a field named **submission** that is the archive.
+
+##### Params
+
+```plain
+lang: "cs" | "cpp" | "java" | "js" | "py"
+team_id: integer
+```
 
 ##### Body
 
