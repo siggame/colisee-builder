@@ -1,7 +1,7 @@
 import { db } from "@siggame/colisee-lib";
 import * as Docker from "dockerode";
 import { createWriteStream } from "fs";
-import { Readable, Writable } from "stream";
+import { PassThrough, Readable, Writable } from "stream";
 import * as winston from "winston";
 import { createGzip } from "zlib";
 
@@ -35,7 +35,8 @@ export class SubmissionImage {
             throw new Error(`image name for team ${teamId} not provided`);
         }
         if (log_path !== "") {
-            this.log = createGzip().pipe(createWriteStream(log_path));
+            this.log = new PassThrough();
+            this.log.pipe(createGzip()).pipe(createWriteStream(log_path));
         } else {
             throw new Error(`log path for team ${teamId} not provided`);
         }
